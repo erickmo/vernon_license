@@ -23,10 +23,25 @@ import (
 	"github.com/flashlab/vernon-license/migrations"
 )
 
-// isSetupRequired returns true jika file .env belum ada.
+// isSetupRequired returns true jika .env belum ada ATAU koneksi DB gagal.
 func isSetupRequired() bool {
-	_, err := os.Stat(".env")
-	return os.IsNotExist(err)
+	if _, err := os.Stat(".env"); os.IsNotExist(err) {
+		return true
+	}
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
+		return true
+	}
+	db, err := sql.Open("postgres", dbURL)
+	if err != nil {
+		return true
+	}
+	defer db.Close()
+	db.SetConnMaxLifetime(3 * time.Second)
+	if err := db.Ping(); err != nil {
+		return true
+	}
+	return false
 }
 
 // serveSetupWizard menjalankan HTTP server minimal yang menyajikan form setup wizard.
