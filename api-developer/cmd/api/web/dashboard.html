@@ -879,8 +879,7 @@
           </thead>
           <tbody>
             ${items.map(item => {
-              const expires = new Date(item.expires_at);
-              const days = Math.ceil((expires - Date.now()) / 86400000);
+              const days = item.days_left ?? Math.ceil((new Date(item.expires_at) - Date.now()) / 86400000);
               const cls = days <= 7 ? 'urgent' : days <= 14 ? 'warn' : 'ok';
               return `
                 <tr>
@@ -925,27 +924,35 @@
         const res = await api('GET', '/api/v1/dashboard');
         const d = res.data || res; // handle envelope
 
-        // Stats
+        // Stats — summary.total (not total_licenses)
         const summary = d.summary || {};
-        setText('s-total', summary.total_licenses ?? 0);
+        setText('s-total', summary.total ?? 0);
         setText('s-active', summary.active ?? 0);
         setText('s-trial', summary.trial ?? 0);
         setText('s-suspended', summary.suspended ?? 0);
         setText('s-expired', summary.expired ?? 0);
 
-        // Revenue
-        const rev = d.revenue || {};
-        setText('r-mrr', rupiah(rev.total_mrr));
-        setText('r-avg', rupiah(rev.avg_contract));
-        renderProductRevenue(rev.by_product);
+        // Revenue — API returns array [{product, total_revenue, license_count, avg_revenue}]
+        const revenueArr = Array.isArray(d.revenue) ? d.revenue : [];
+        const totalMRR = revenueArr.reduce((s, r) => s + (r.total_revenue || 0), 0);
+        const totalLic = revenueArr.reduce((s, r) => s + (r.license_count || 0), 0);
+        const avgContract = totalLic > 0 ? totalMRR / totalLic : 0;
+        setText('r-mrr', rupiah(totalMRR));
+        setText('r-avg', rupiah(avgContract));
+        const byProductMap = {};
+        for (const r of revenueArr) byProductMap[r.product] = r.total_revenue;
+        renderProductRevenue(byProductMap);
 
-        // Distribution
-        const dist = d.distribution || {};
-        const total = summary.total_licenses || 1;
-        renderDistRows('distByPlan', dist.by_plan || {}, total);
-        renderDistRows('distByProduct', dist.by_product || {}, total);
+        // Distribution — API returns arrays, convert to objects
+        const total = (summary.total || 1);
+        const planMap = {};
+        for (const p of (d.plan_distribution || [])) planMap[p.plan] = p.count;
+        renderDistRows('distByPlan', planMap, total);
+        const prodMap = {};
+        for (const p of (d.product_distribution || [])) prodMap[p.product] = p.count;
+        renderDistRows('distByProduct', prodMap, total);
 
-        // Expiring
+        // Expiring — use days_left from API
         renderExpiring(d.expiring_soon || []);
 
         // Activity

@@ -313,9 +313,11 @@
 
       setLoading(true);
       try {
-        const res = await api('POST', '/api/v1/auth/login', { email, password });
-        setToken(res.data.token);
-        setUser(res.data.user);
+        // Handler expects 'identifier' not 'email'
+        const res = await api('POST', '/api/v1/auth/login', { identifier: email, password });
+        const d = res.data;
+        setToken(d.access_token);
+        setUser({ id: d.user_id, name: d.name, email: d.email, role: d.role });
         window.location.replace('/dashboard.html');
       } catch (err) {
         showError(err.message || 'Login gagal. Coba lagi.');

@@ -45,7 +45,9 @@ async function api(method, path, body) {
   const json = await res.json().catch(() => null);
 
   if (!res.ok) {
-    const msg = json?.error?.message || `HTTP ${res.status}`;
+    // Handle both {error: {message: "..."}} and {error: "plain string"}
+    const err = json?.error;
+    const msg = (typeof err === 'object' ? err?.message : err) || `HTTP ${res.status}`;
     throw new Error(msg);
   }
 
