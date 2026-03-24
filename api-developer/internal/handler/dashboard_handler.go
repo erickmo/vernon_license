@@ -57,25 +57,33 @@ type activityItemRow struct {
 	CreatedAt  time.Time `db:"created_at"`
 }
 
+// ProvisionKeyItem merepresentasikan provision key satu license (hanya untuk superuser).
+type ProvisionKeyItem struct {
+	LicenseKey      string `json:"license_key"`
+	CompanyName     string `json:"company_name"`
+	ProvisionAPIKey string `json:"provision_api_key"`
+}
+
 // DashboardStats adalah agregasi statistik untuk halaman dashboard.
 type DashboardStats struct {
-	TotalLicenses     int               `json:"total_licenses"`
-	ActiveLicenses    int               `json:"active_licenses"`
-	PendingLicenses   int               `json:"pending_licenses"`
-	SuspendedLicenses int               `json:"suspended_licenses"`
-	ExpiredLicenses   int               `json:"expired_licenses"`
-	TotalCompanies    int               `json:"total_companies"`
-	TotalProposals    int               `json:"total_proposals"`
-	PendingProposals  int               `json:"pending_proposals"`
-	TotalRevenue      float64           `json:"total_revenue"`
-	ExpiringLicenses  []ExpiringLicense `json:"expiring_licenses"`
-	RecentActivity    []ActivityItem    `json:"recent_activity"`
+	TotalLicenses     int                `json:"total_licenses"`
+	ActiveLicenses    int                `json:"active_licenses"`
+	PendingLicenses   int                `json:"pending_licenses"`
+	SuspendedLicenses int                `json:"suspended_licenses"`
+	ExpiredLicenses   int                `json:"expired_licenses"`
+	TotalCompanies    int                `json:"total_companies"`
+	TotalProposals    int                `json:"total_proposals"`
+	PendingProposals  int                `json:"pending_proposals"`
+	TotalRevenue      float64            `json:"total_revenue"`
+	ExpiringLicenses  []ExpiringLicense  `json:"expiring_licenses"`
+	RecentActivity    []ActivityItem     `json:"recent_activity"`
+	ProvisionKeys     []ProvisionKeyItem `json:"provision_keys,omitempty"`
 }
 
 // GetStats menangani GET /api/internal/dashboard.
 // Mengembalikan statistik agregasi untuk Vernon App dashboard.
 func (h *DashboardHandler) GetStats(w http.ResponseWriter, r *http.Request) {
-	_, ok := appmiddleware.UserFromContext(r.Context())
+	claims, ok := appmiddleware.UserFromContext(r.Context())
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Not authenticated")
 		return
@@ -196,6 +204,40 @@ func (h *DashboardHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 				ActorName:  row.ActorName,
 				CreatedAt:  row.CreatedAt.Format("2006-01-02T15:04:05Z"),
 			})
+		}
+	}
+
+	// Provision keys — hanya untuk superuser.
+	if claims.Role == "superuser" {
+		const provisionQ = `
+			SELECT cl.license_key, c.name AS company_name, cl.provision_api_key
+			FROM client_licenses cl
+			JOIN companies c ON c.id = cl.company_id
+			WHERE cl.provision_api_key IS NOT NULL
+				AND cl.deleted_at IS NULL
+			ORDER BY c.name ASC, cl.license_key ASC`
+		type provisionRow struct {
+			LicenseKey      string `db:"license_key"`
+			CompanyName     string `db:"company_name"`
+			ProvisionAPIKey string `db:"provision_api_key"`
+		}
+		if pkRows, qErr := h.db.QueryxContext(ctx, provisionQ); qErr != nil {
+			h.logger.Warn("DashboardHandler.GetStats: provision keys skipped", zap.Error(qErr))
+		} else {
+			defer pkRows.Close()
+			stats.ProvisionKeys = []ProvisionKeyItem{}
+			for pkRows.Next() {
+				var row provisionRow
+				if err := pkRows.StructScan(&row); err != nil {
+					h.logger.Error("DashboardHandler.GetStats: scan provision row", zap.Error(err))
+					continue
+				}
+				stats.ProvisionKeys = append(stats.ProvisionKeys, ProvisionKeyItem{
+					LicenseKey:      row.LicenseKey,
+					CompanyName:     row.CompanyName,
+					ProvisionAPIKey: row.ProvisionAPIKey,
+				})
+			}
 		}
 	}
 

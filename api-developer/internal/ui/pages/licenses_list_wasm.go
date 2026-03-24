@@ -108,11 +108,6 @@ func (p *LicensesListPage) onSearchChange(ctx app.Context, e app.Event) {
 	p.applyFilter()
 }
 
-// onCreateClick navigasi ke halaman buat license baru.
-func (p *LicensesListPage) onCreateClick(ctx app.Context, e app.Event) {
-	ctx.Navigate("/licenses/new")
-}
-
 // onViewClick navigasi ke halaman detail license.
 func (p *LicensesListPage) onViewClick(id string) func(app.Context, app.Event) {
 	return func(ctx app.Context, e app.Event) {
@@ -152,21 +147,6 @@ func (p *LicensesListPage) renderContent() app.UI {
 						Style("font-weight", "700").
 						Style("margin", "0").
 						Text("Licenses"),
-					app.If(p.authStore.HasRole("project_owner"),
-						func() app.UI {
-							return app.Button().
-								Style("background", "linear-gradient(135deg, #4D2975, #26B8B0)").
-								Style("color", "#E2D9F3").
-								Style("border", "none").
-								Style("border-radius", "8px").
-								Style("padding", "10px 20px").
-								Style("font-size", "14px").
-								Style("font-weight", "600").
-								Style("cursor", "pointer").
-								OnClick(p.onCreateClick).
-								Text("+ Buat License")
-						},
-					),
 				),
 
 			// Error message

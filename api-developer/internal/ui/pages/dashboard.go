@@ -12,19 +12,27 @@ import (
 	"github.com/maxence-charriere/go-app/v10/pkg/app"
 )
 
+// provisionKeyItem adalah satu item provision key untuk tampilan superuser.
+type provisionKeyItem struct {
+	LicenseKey      string `json:"license_key"`
+	CompanyName     string `json:"company_name"`
+	ProvisionAPIKey string `json:"provision_api_key"`
+}
+
 // dashboardStats adalah response dari GET /api/internal/dashboard.
 type dashboardStats struct {
-	TotalLicenses     int               `json:"total_licenses"`
-	ActiveLicenses    int               `json:"active_licenses"`
-	PendingLicenses   int               `json:"pending_licenses"`
-	SuspendedLicenses int               `json:"suspended_licenses"`
-	ExpiredLicenses   int               `json:"expired_licenses"`
-	TotalCompanies    int               `json:"total_companies"`
-	TotalProposals    int               `json:"total_proposals"`
-	PendingProposals  int               `json:"pending_proposals"`
-	TotalRevenue      float64           `json:"total_revenue"`
-	ExpiringLicenses  []expiringLicense `json:"expiring_licenses"`
-	RecentActivity    []activityItem    `json:"recent_activity"`
+	TotalLicenses     int                `json:"total_licenses"`
+	ActiveLicenses    int                `json:"active_licenses"`
+	PendingLicenses   int                `json:"pending_licenses"`
+	SuspendedLicenses int                `json:"suspended_licenses"`
+	ExpiredLicenses   int                `json:"expired_licenses"`
+	TotalCompanies    int                `json:"total_companies"`
+	TotalProposals    int                `json:"total_proposals"`
+	PendingProposals  int                `json:"pending_proposals"`
+	TotalRevenue      float64            `json:"total_revenue"`
+	ExpiringLicenses  []expiringLicense  `json:"expiring_licenses"`
+	RecentActivity    []activityItem     `json:"recent_activity"`
+	ProvisionKeys     []provisionKeyItem `json:"provision_keys"`
 }
 
 // expiringLicense adalah lisensi yang akan expired dalam 30 hari.
@@ -168,6 +176,7 @@ func (p *DashboardPage) renderContent() app.UI {
 						p.renderAPIInfo(),
 							p.renderExpiringTable(),
 							p.renderActivityFeed(),
+							p.renderProvisionKeys(),
 						)
 				},
 			),
@@ -681,5 +690,113 @@ func (p *DashboardPage) renderActivityFeed() app.UI {
 				Style("margin-bottom", "8px").
 				Text("Recent Activity"),
 			app.Div().Body(items...),
+		)
+}
+
+// renderProvisionKeys merender tabel provision keys — hanya untuk superuser.
+func (p *DashboardPage) renderProvisionKeys() app.UI {
+	if !p.authStore.HasRole("superuser") {
+		return app.Div()
+	}
+	s := p.stats
+	if len(s.ProvisionKeys) == 0 {
+		return app.Div()
+	}
+
+	rows := make([]app.UI, 0, len(s.ProvisionKeys))
+	for _, pk := range s.ProvisionKeys {
+		pk := pk
+		rows = append(rows, app.Tr().
+			Style("border-bottom", "1px solid rgba(77,41,117,0.2)").
+			Body(
+				app.Td().
+					Style("padding", "10px 12px").
+					Style("color", "#9B8DB5").
+					Style("font-size", "13px").
+					Style("max-width", "160px").
+					Style("overflow", "hidden").
+					Style("text-overflow", "ellipsis").
+					Style("white-space", "nowrap").
+					Text(pk.CompanyName),
+				app.Td().
+					Style("padding", "10px 12px").
+					Style("color", "#E2D9F3").
+					Style("font-size", "13px").
+					Style("font-family", "monospace").
+					Style("max-width", "140px").
+					Style("overflow", "hidden").
+					Style("text-overflow", "ellipsis").
+					Style("white-space", "nowrap").
+					Text(pk.LicenseKey),
+				app.Td().
+					Style("padding", "10px 12px").
+					Style("font-size", "13px").
+					Style("font-family", "monospace").
+					Body(
+						app.Span().
+							Style("display", "inline-block").
+							Style("background", "rgba(77,41,117,0.2)").
+							Style("color", "#E9A800").
+							Style("border", "1px solid rgba(77,41,117,0.4)").
+							Style("border-radius", "6px").
+							Style("padding", "3px 10px").
+							Style("letter-spacing", "0.05em").
+							Style("max-width", "320px").
+							Style("overflow", "hidden").
+							Style("text-overflow", "ellipsis").
+							Style("white-space", "nowrap").
+							Style("display", "inline-block").
+							Text(pk.ProvisionAPIKey),
+					),
+			),
+		)
+	}
+
+	return app.Div().
+		Style("background", "#1A1035").
+		Style("border", "1px solid rgba(77,41,117,0.3)").
+		Style("border-radius", "12px").
+		Style("padding", "20px").
+		Style("margin-top", "28px").
+		Body(
+			app.Div().
+				Style("display", "flex").
+				Style("align-items", "center").
+				Style("gap", "10px").
+				Style("margin-bottom", "16px").
+				Body(
+					app.Div().
+						Style("color", "#E2D9F3").
+						Style("font-size", "15px").
+						Style("font-weight", "600").
+						Text("Provision Keys"),
+					app.Span().
+						Style("background", "rgba(239,68,68,0.15)").
+						Style("color", "#EF4444").
+						Style("font-size", "11px").
+						Style("font-weight", "600").
+						Style("padding", "2px 8px").
+						Style("border-radius", "4px").
+						Text("SUPERUSER ONLY"),
+				),
+			app.Div().
+				Style("overflow-x", "auto").
+				Body(
+					app.Table().
+						Style("width", "100%").
+						Style("border-collapse", "collapse").
+						Body(
+							app.THead().Body(
+								app.Tr().
+									Style("border-bottom", "1px solid rgba(77,41,117,0.4)").
+									Body(
+										app.Th().Style("padding", "8px 12px").Style("text-align", "left").Style("color", "#9B8DB5").Style("font-size", "12px").Style("font-weight", "500").Style("text-transform", "uppercase").Text("Company"),
+										app.Th().Style("padding", "8px 12px").Style("text-align", "left").Style("color", "#9B8DB5").Style("font-size", "12px").Style("font-weight", "500").Style("text-transform", "uppercase").Text("License Key"),
+										app.Th().Style("padding", "8px 12px").Style("text-align", "left").Style("color", "#9B8DB5").Style("font-size", "12px").Style("font-weight", "500").Style("text-transform", "uppercase").Text("Provision API Key"),
+									),
+							),
+							app.TBody().Body(rows...),
+						),
+				),
 		)
 }
