@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
@@ -29,6 +30,17 @@ import (
 )
 
 func main() {
+	// Pre-startup check: .env dan DB connection harus OK sebelum FX dimulai.
+	// Jika ada masalah, jalankan setup page server dan block di sana.
+	if issues := checkStartupConditions(); issues != nil {
+		port := os.Getenv("PORT")
+		if port == "" {
+			port = "8081"
+		}
+		serveSetupPage(issues, port)
+		return
+	}
+
 	fxApp := fx.New(
 		// Config
 		fx.Provide(provideConfig),

@@ -7,6 +7,12 @@ package pages
 
 import "github.com/maxence-charriere/go-app/v10/pkg/app"
 
+// SetupPage adalah halaman first-run setup superuser.
+type SetupPage struct{ app.Compo }
+
+// Render stub untuk server-side.
+func (p *SetupPage) Render() app.UI { return app.Div() }
+
 // LoginPage adalah halaman login Vernon App.
 type LoginPage struct{ app.Compo }
 

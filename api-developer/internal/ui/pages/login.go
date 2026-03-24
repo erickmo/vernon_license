@@ -31,11 +31,24 @@ type LoginPage struct {
 }
 
 // OnNav dipanggil saat halaman ini di-navigasi.
-// Redirect ke / jika sudah login.
+// Redirect ke / jika sudah login, atau ke /setup jika belum ada user.
 func (p *LoginPage) OnNav(ctx app.Context) {
 	if p.authStore.IsLoggedIn() {
-		ctx.Navigate("/")
+		app.Navigate("/")
+		return
 	}
+	// Cek apakah setup sudah dilakukan
+	ctx.Async(func() {
+		client := api.NewClient("", "")
+		var resp struct {
+			IsSetup bool `json:"is_setup"`
+		}
+		if err := client.Get(ctx, "/api/internal/setup/status", &resp); err == nil && !resp.IsSetup {
+			ctx.Dispatch(func(ctx app.Context) {
+				app.Navigate("/setup")
+			})
+		}
+	})
 }
 
 // Render menampilkan form login dengan tema gelap.

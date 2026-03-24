@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vernon License — Setup</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0F0A1A;
+    color: #E2D9F3;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .container {
+    max-width: 640px;
+    width: 100%;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+  .logo-icon {
+    width: 44px;
+    height: 44px;
+    background: linear-gradient(135deg, #4D2975, #26B8B0);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+  }
+  .logo-text {
+    font-size: 22px;
+    font-weight: 700;
+    color: #E2D9F3;
+    letter-spacing: -0.3px;
+  }
+  .logo-sub {
+    font-size: 12px;
+    color: #9B8DB5;
+    margin-top: 2px;
+  }
+  .card {
+    background: #1A1035;
+    border: 1px solid rgba(77,41,117,0.4);
+    border-radius: 16px;
+    padding: 32px;
+    margin-bottom: 16px;
+  }
+  .status-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .status-icon {
+    font-size: 28px;
+  }
+  .status-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #E2D9F3;
+  }
+  .status-subtitle {
+    font-size: 13px;
+    color: #9B8DB5;
+    margin-top: 2px;
+  }
+  .checks {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+  .check-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background: rgba(15,10,26,0.6);
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .check-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .dot-ok { background: #22C55E; box-shadow: 0 0 8px rgba(34,197,94,0.5); }
+  .dot-fail { background: #EF4444; box-shadow: 0 0 8px rgba(239,68,68,0.5); }
+  .dot-warn { background: #F59E0B; box-shadow: 0 0 8px rgba(245,158,11,0.5); }
+  .check-label {
+    font-size: 14px;
+    font-weight: 500;
+    flex: 1;
+  }
+  .check-status {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 20px;
+  }
+  .status-ok { background: rgba(34,197,94,0.15); color: #22C55E; }
+  .status-fail { background: rgba(239,68,68,0.15); color: #EF4444; }
+  .status-warn { background: rgba(245,158,11,0.15); color: #F59E0B; }
+  .steps {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .step {
+    display: flex;
+    gap: 14px;
+  }
+  .step-num {
+    width: 28px;
+    height: 28px;
+    background: rgba(77,41,117,0.4);
+    border: 1px solid rgba(77,41,117,0.6);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: #9B8DB5;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .step-content h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #E2D9F3;
+    margin-bottom: 6px;
+  }
+  .step-content p {
+    font-size: 13px;
+    color: #9B8DB5;
+    line-height: 1.6;
+  }
+  code, pre {
+    background: rgba(0,0,0,0.4);
+    border: 1px solid rgba(77,41,117,0.3);
+    border-radius: 6px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 12px;
+    color: #26B8B0;
+  }
+  code { padding: 2px 6px; }
+  pre { padding: 12px 16px; margin-top: 8px; overflow-x: auto; line-height: 1.7; }
+  .section-title {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #9B8DB5;
+    margin-bottom: 16px;
+  }
+  .btn-retry {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, #4D2975, #3D1F5E);
+    border: 1px solid rgba(77,41,117,0.6);
+    border-radius: 10px;
+    color: #E2D9F3;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 8px;
+  }
+  .btn-retry:hover { background: linear-gradient(135deg, #5D3985, #4D2975); transform: translateY(-1px); }
+  .divider {
+    height: 1px;
+    background: rgba(255,255,255,0.06);
+    margin: 24px 0;
+  }
+  .env-reason { font-size: 13px; color: #EF4444; margin-top: 6px; }
+  .highlight { color: #26B8B0; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="logo">
+    <div class="logo-icon">🔑</div>
+    <div>
+      <div class="logo-text">Vernon License</div>
+      <div class="logo-sub">License Management System</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="status-header">
+      <div class="status-icon">⚙️</div>
+      <div>
+        <div class="status-title">Setup Diperlukan</div>
+        <div class="status-subtitle" id="subtitle">Sistem belum siap — ikuti langkah di bawah untuk memulai</div>
+      </div>
+    </div>
+
+    <div class="checks" id="checks">
+      <!-- Diisi oleh JavaScript -->
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section-title">Langkah Setup</div>
+    <div class="steps" id="steps">
+      <!-- Diisi oleh JavaScript -->
+    </div>
+
+    <button class="btn-retry" onclick="location.reload()">🔄 Coba Lagi</button>
+  </div>
+</div>
+
+<script>
+  const issues = window.__SETUP_ISSUES__ || {};
+  const missingEnv = issues.missing_env === true;
+  const dbError = issues.db_error || null;
+  const envReason = issues.env_reason || null;
+
+  const checksEl = document.getElementById('checks');
+  const stepsEl = document.getElementById('steps');
+  const subtitleEl = document.getElementById('subtitle');
+
+  // Render checks
+  function check(label, ok, msg) {
+    const color = ok ? 'ok' : 'fail';
+    const statusText = ok ? 'OK' : 'GAGAL';
+    return `
+      <div class="check-item">
+        <div class="check-dot dot-${color}"></div>
+        <span class="check-label">${label}</span>
+        ${msg ? `<span style="font-size:12px;color:#9B8DB5;margin-right:8px">${msg}</span>` : ''}
+        <span class="check-status status-${color}">${statusText}</span>
+      </div>`;
+  }
+
+  checksEl.innerHTML =
+    check('File .env', !missingEnv, missingEnv ? 'tidak ditemukan' : '') +
+    check('Koneksi Database', !dbError, dbError ? dbError.substring(0,50) : '');
+
+  // Determine subtitle
+  if (missingEnv && dbError) {
+    subtitleEl.textContent = '.env tidak ditemukan dan koneksi database gagal';
+  } else if (missingEnv) {
+    subtitleEl.textContent = 'File .env tidak ditemukan — konfigurasi diperlukan';
+  } else if (dbError) {
+    subtitleEl.textContent = 'Koneksi database gagal — cek DATABASE_URL di .env';
+  }
+
+  // Render steps
+  const steps = [];
+
+  if (missingEnv) {
+    steps.push({
+      title: 'Buat file .env',
+      html: `<p>Copy dari <code>.env.example</code> lalu sesuaikan:</p>
+<pre>cp .env.example .env</pre>
+<p style="margin-top:8px">Edit file <code>.env</code> dan isi nilai berikut:</p>
+<pre>DATABASE_URL=postgres://user:password@localhost:5432/dbname?sslmode=disable
+JWT_SECRET=minimum-32-chars-random-string
+PORT=8081</pre>
+${envReason ? `<p class="env-reason">${envReason}</p>` : ''}`
+    });
+  }
+
+  if (dbError) {
+    steps.push({
+      title: 'Perbaiki koneksi database',
+      html: `<p>Pastikan PostgreSQL berjalan dan <code>DATABASE_URL</code> benar:</p>
+<pre># macOS (Homebrew)
+brew services start postgresql@17
+
+# Cek port
+psql -U postgres -c "\\l"</pre>
+<p style="margin-top:8px">Format <code>DATABASE_URL</code>:</p>
+<pre>postgres://USERNAME:PASSWORD@HOST:PORT/DATABASE?sslmode=disable</pre>`
+    });
+  }
+
+  steps.push({
+    title: 'Jalankan migrasi',
+    html: `<p>Buat schema database:</p>
+<pre>make migrate-up</pre>`
+  });
+
+  steps.push({
+    title: 'Start server',
+    html: `<p>Jalankan server Vernon License:</p>
+<pre>make dev</pre>
+<p style="margin-top:8px">Server akan berjalan di <span class="highlight">http://localhost:8081</span></p>`
+  });
+
+  stepsEl.innerHTML = steps.map((s, i) => `
+    <div class="step">
+      <div class="step-num">${i+1}</div>
+      <div class="step-content">
+        <h4>${s.title}</h4>
+        ${s.html}
+      </div>
+    </div>`).join('');
+</script>
+</body>
+</html>

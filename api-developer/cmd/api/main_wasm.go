@@ -10,6 +10,7 @@ import (
 )
 
 func main() {
+	app.Route("/setup", func() app.Composer { return &pages.SetupPage{} })
 	app.Route("/login", func() app.Composer { return &pages.LoginPage{} })
 	app.Route("/", func() app.Composer { return &pages.DashboardPage{} })
 	app.Route("/companies", func() app.Composer { return &pages.CompaniesListPage{} })
