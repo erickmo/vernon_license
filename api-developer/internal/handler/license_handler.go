@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 
 	"github.com/flashlab/vernon-license/internal/domain"
@@ -656,4 +657,67 @@ func (h *LicenseHandler) toLicenseDetailDTO(r *http.Request, l *domain.ClientLic
 	}
 
 	return dto
+}
+
+// GetProvisionKey mengembalikan provision API key untuk sebuah license.
+// Hanya superuser yang bisa akses endpoint ini.
+func (h *LicenseHandler) GetProvisionKey(w http.ResponseWriter, r *http.Request) {
+	// Check superuser role
+	user, ok := appmiddleware.UserFromContext(r.Context())
+	if !ok || user.Role != "superuser" {
+		writeError(w, http.StatusForbidden, "FORBIDDEN", "Only superuser can access provision key")
+		return
+	}
+
+	licenseIDStr := chi.URLParam(r, "id")
+	if licenseIDStr == "" {
+		writeError(w, http.StatusBadRequest, "VALIDATION_FAILED", "License ID is required")
+		return
+	}
+
+	licenseID, err := uuid.Parse(licenseIDStr)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "VALIDATION_FAILED", "Invalid license ID format")
+		return
+	}
+
+	license, err := h.licenseSvc.GetByID(r.Context(), licenseID)
+	if err != nil {
+		if errors.Is(err, domain.ErrLicenseNotFound) {
+			writeError(w, http.StatusNotFound, "NOT_FOUND", "License not found")
+			return
+		}
+		h.logger.Error("GetProvisionKey: GetByID failed", zap.Error(err))
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Internal server error")
+		return
+	}
+
+	response := struct {
+		LicenseID           string `json:"license_id"`
+		LicenseKey          string `json:"license_key"`
+		ProvisionAPIKey     string `json:"provision_api_key"`
+		GeneratedAt         string `json:"generated_at,omitempty"`
+		NextRotationIn      string `json:"next_rotation_in,omitempty"`
+	}{
+		LicenseID:       license.ID.String(),
+		LicenseKey:      license.LicenseKey,
+		ProvisionAPIKey: "",
+	}
+
+	// Expose provision key hanya jika ada
+	if license.ProvisionAPIKey != nil {
+		response.ProvisionAPIKey = *license.ProvisionAPIKey
+	}
+
+	// Tampilkan kapan key di-generate
+	if license.ProvisionAPIKeyGeneratedAt != nil {
+		response.GeneratedAt = license.ProvisionAPIKeyGeneratedAt.UTC().Format(time.RFC3339)
+		// Hitung next rotation (30 menit dari generated_at)
+		nextRotation := license.ProvisionAPIKeyGeneratedAt.Add(30 * time.Minute)
+		if nextRotation.After(time.Now()) {
+			response.NextRotationIn = nextRotation.Sub(time.Now()).String()
+		}
+	}
+
+	writeJSON(w, http.StatusOK, response)
 }

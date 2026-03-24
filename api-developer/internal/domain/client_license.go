@@ -32,10 +32,13 @@ type ClientLicense struct {
 	InstanceURL     *string    `db:"instance_url"`
 	InstanceName    *string    `db:"instance_name"`
 	// ProvisionAPIKey tidak pernah diekspos ke luar (json:"-").
-	ProvisionAPIKey *string    `db:"provision_api_key" json:"-"`
-	CheckInterval   string     `db:"check_interval"`
-	LastPullAt      *time.Time `db:"last_pull_at"`
-	IsRegistered    bool       `db:"is_registered"`
+	ProvisionAPIKey            *string    `db:"provision_api_key" json:"-"`
+	ProvisionAPIKeyGeneratedAt *time.Time `db:"provision_api_key_generated_at"`
+	ProvisionAPIKeyPrevious    *string    `db:"provision_api_key_previous" json:"-"`
+	ProvisionAPIKeyPreviousAt  *time.Time `db:"provision_api_key_previous_at"`
+	CheckInterval              string     `db:"check_interval"`
+	LastPullAt                 *time.Time `db:"last_pull_at"`
+	IsRegistered               bool       `db:"is_registered"`
 	ProposalID      *uuid.UUID `db:"proposal_id"`
 	CreatedBy       uuid.UUID  `db:"created_by"`
 	CreatedAt       time.Time  `db:"created_at"`
@@ -81,6 +84,8 @@ type LicenseRepository interface {
 	FindByKey(ctx context.Context, key string) (*ClientLicense, error)
 
 	// FindByProvisionKey mencari license berdasarkan provision_api_key dan product slug.
+	// Hanya current key yang valid — tidak ada grace period dengan previous key.
+	// Previous key disimpan untuk audit trail saja.
 	FindByProvisionKey(ctx context.Context, provisionKey, productSlug string) (*ClientLicense, error)
 
 	// FindByProject mengembalikan semua license untuk sebuah project.

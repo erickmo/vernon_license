@@ -660,44 +660,63 @@ func (p *LicenseDetailPage) renderRegistrationTab() app.UI {
 					infoCard("Check Interval", l.CheckInterval),
 				),
 
-			// Provision API Key — tersembunyi dengan tombol copy
-			app.Div().
-				Style("background", "#1A1035").
-				Style("border", "1px solid rgba(77,41,117,0.3)").
-				Style("border-radius", "12px").
-				Style("padding", "16px 20px").
-				Body(
-					app.Div().
-						Style("font-size", "11px").
-						Style("color", "#9B8DB5").
-						Style("text-transform", "uppercase").
-						Style("letter-spacing", "0.08em").
-						Style("margin-bottom", "8px").
-						Text("Provision API Key"),
-					app.Div().
-						Style("display", "flex").
-						Style("align-items", "center").
-						Style("gap", "12px").
+			// Provision API Key — hanya visible untuk superuser
+			app.If(p.authStore.HasRole("superuser"),
+				func() app.UI {
+					provKey := l.ProvisionAPIKey
+					if provKey == "" {
+						provKey = "—"
+					}
+					return app.Div().
+						Style("background", "#1A1035").
+						Style("border", "1px solid rgba(38,184,176,0.3)").
+						Style("border-radius", "12px").
+						Style("padding", "16px 20px").
 						Body(
-							app.Span().
-								Style("font-family", "monospace").
-								Style("font-size", "14px").
-								Style("color", "#E2D9F3").
-								Style("letter-spacing", "0.1em").
-								Text("••••••••••••••••••••••••••••••••"),
-							app.Button().
-								Style("background", "rgba(38,184,176,0.15)").
-								Style("border", "1px solid rgba(38,184,176,0.4)").
-								Style("border-radius", "6px").
-								Style("padding", "6px 14px").
+							app.Div().
+								Style("font-size", "11px").
 								Style("color", "#26B8B0").
-								Style("font-size", "12px").
-								Style("font-weight", "600").
-								Style("cursor", "pointer").
-								OnClick(p.onCopyProvisionKey).
-								Text("Copy"),
-						),
-				),
+								Style("text-transform", "uppercase").
+								Style("letter-spacing", "0.08em").
+								Style("margin-bottom", "8px").
+								Style("display", "flex").
+								Style("align-items", "center").
+								Style("gap", "8px").
+								Body(
+									app.Span().Text("🔑 Provision API Key (Superuser Only)"),
+								),
+							app.Div().
+								Style("display", "flex").
+								Style("align-items", "center").
+								Style("gap", "12px").
+								Body(
+									app.Span().
+										Style("font-family", "monospace").
+										Style("font-size", "14px").
+										Style("color", "#26B8B0").
+										Style("letter-spacing", "0.1em").
+										Style("flex", "1").
+										Text(provKey),
+									app.Button().
+										Style("background", "rgba(38,184,176,0.15)").
+										Style("border", "1px solid rgba(38,184,176,0.4)").
+										Style("border-radius", "6px").
+										Style("padding", "6px 14px").
+										Style("color", "#26B8B0").
+										Style("font-size", "12px").
+										Style("font-weight", "600").
+										Style("cursor", "pointer").
+										OnClick(p.onCopyProvisionKey).
+										Text("Copy"),
+								),
+							app.Div().
+								Style("font-size", "11px").
+								Style("color", "#9B8DB5").
+								Style("margin-top", "8px").
+								Text("⚠️ Client app hanya bisa register dengan current key. Rotates setiap 30 menit."),
+						)
+				},
+			),
 		)
 }
 

@@ -230,6 +230,8 @@ func (p *DashboardPage) summaryCard(title, value, subtitle, accentColor, iconPat
 				Body(
 					app.Div().
 						Style("flex", "1").
+						Style("min-width", "0").
+						Style("overflow", "hidden").
 						Body(
 							app.Div().
 								Style("color", "#9B8DB5").
@@ -238,12 +240,18 @@ func (p *DashboardPage) summaryCard(title, value, subtitle, accentColor, iconPat
 								Style("text-transform", "uppercase").
 								Style("letter-spacing", "0.05em").
 								Style("margin-bottom", "6px").
+								Style("overflow", "hidden").
+								Style("text-overflow", "ellipsis").
+								Style("white-space", "nowrap").
 								Text(title),
 							app.Div().
 								Style("color", "#E2D9F3").
 								Style("font-size", "28px").
 								Style("font-weight", "700").
 								Style("line-height", "1").
+								Style("overflow", "hidden").
+								Style("text-overflow", "ellipsis").
+								Style("white-space", "nowrap").
 								Text(value),
 						),
 					app.Div().
@@ -576,6 +584,7 @@ func renderAPIEndpoint(method, fullURL, desc string) app.UI {
 		Style("display", "flex").
 		Style("align-items", "flex-start").
 		Style("gap", "12px").
+		Style("min-width", "0").
 		Body(
 			app.Span().
 				Style("display", "inline-block").
@@ -590,17 +599,23 @@ func renderAPIEndpoint(method, fullURL, desc string) app.UI {
 				Style("margin-top", "1px").
 				Text(method),
 			app.Div().
+				Style("min-width", "0").
+				Style("overflow", "hidden").
 				Body(
 					app.Div().
 						Style("color", "#E2D9F3").
 						Style("font-size", "13px").
 						Style("font-family", "monospace").
 						Style("font-weight", "500").
+						Style("overflow", "hidden").
+						Style("text-overflow", "ellipsis").
+						Style("white-space", "nowrap").
 						Text(fullURL),
 					app.Div().
 						Style("color", "#9B8DB5").
 						Style("font-size", "12px").
 						Style("margin-top", "2px").
+						Style("word-break", "break-word").
 						Text(desc),
 				),
 		)
@@ -633,11 +648,16 @@ func (p *DashboardPage) renderActivityFeed() app.UI {
 					Style("margin-top", "5px"),
 				app.Div().
 					Style("flex", "1").
+					Style("min-width", "0").
+					Style("overflow", "hidden").
 					Body(
 						app.Div().
 							Style("color", "#E2D9F3").
 							Style("font-size", "13px").
 							Style("font-weight", "500").
+							Style("overflow", "hidden").
+							Style("text-overflow", "ellipsis").
+							Style("white-space", "nowrap").
 							Text(fmt.Sprintf("%s: %s", act.EntityType, act.Action)),
 						app.Div().
 							Style("color", "#9B8DB5").

@@ -15,4 +15,5 @@ var ServiceModule = fx.Options(
 	fx.Provide(NewNotificationService),
 	fx.Provide(NewSetupService),
 	fx.Provide(NewProposalService),
+	fx.Provide(NewProvisionService),
 )

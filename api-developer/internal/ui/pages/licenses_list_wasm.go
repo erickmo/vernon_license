@@ -285,10 +285,10 @@ func (p *LicensesListPage) renderTable() app.UI {
 			Style("cursor", "pointer").
 			OnClick(p.onViewClick(l.ID)).
 			Body(
-				app.Td().Style("padding", "12px 14px").Style("color", "#E2D9F3").Style("font-family", "monospace").Style("font-size", "13px").Text(l.LicenseKey),
-				app.Td().Style("padding", "12px 14px").Style("color", "#E2D9F3").Style("font-size", "13px").Text(l.CompanyName),
-				app.Td().Style("padding", "12px 14px").Style("color", "#9B8DB5").Style("font-size", "13px").Text(l.ProjectName),
-				app.Td().Style("padding", "12px 14px").Style("color", "#9B8DB5").Style("font-size", "13px").Text(l.ProductName),
+				app.Td().Style("padding", "12px 14px").Style("color", "#E2D9F3").Style("font-family", "monospace").Style("font-size", "13px").Style("max-width", "180px").Style("overflow", "hidden").Style("text-overflow", "ellipsis").Style("white-space", "nowrap").Text(l.LicenseKey),
+				app.Td().Style("padding", "12px 14px").Style("color", "#E2D9F3").Style("font-size", "13px").Style("max-width", "160px").Style("overflow", "hidden").Style("text-overflow", "ellipsis").Style("white-space", "nowrap").Text(l.CompanyName),
+				app.Td().Style("padding", "12px 14px").Style("color", "#9B8DB5").Style("font-size", "13px").Style("max-width", "140px").Style("overflow", "hidden").Style("text-overflow", "ellipsis").Style("white-space", "nowrap").Text(l.ProjectName),
+				app.Td().Style("padding", "12px 14px").Style("color", "#9B8DB5").Style("font-size", "13px").Style("max-width", "120px").Style("overflow", "hidden").Style("text-overflow", "ellipsis").Style("white-space", "nowrap").Text(l.ProductName),
 				app.Td().Style("padding", "12px 14px").Style("font-size", "13px").Text(l.Plan),
 				app.Td().Style("padding", "12px 14px").Body(statusBadge(l.Status)),
 				app.Td().Style("padding", "12px 14px").Style("color", registeredColor).Style("font-size", "13px").Text(registeredText),

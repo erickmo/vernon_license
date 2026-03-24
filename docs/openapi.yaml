@@ -1,0 +1,1308 @@
+openapi: 3.0.0
+info:
+  title: Vernon License API
+  version: 1.0.0
+  description: Centralized licensing system for Vernon products
+  contact:
+    name: FlashLab
+servers:
+  - url: http://localhost:8081
+    description: Development server
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [superuser, project_owner, sales]
+        is_active:
+          type: boolean
+
+    Company:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        address:
+          type: string
+
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        company_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+        is_active:
+          type: boolean
+
+    License:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        license_key:
+          type: string
+        company_id:
+          type: string
+          format: uuid
+        company_name:
+          type: string
+        project_id:
+          type: string
+          format: uuid
+        project_name:
+          type: string
+        product_name:
+          type: string
+        plan:
+          type: string
+          enum: [saas, dedicated]
+        status:
+          type: string
+          enum: [pending, active, suspended, expired, trial]
+        modules:
+          type: array
+          items:
+            type: string
+        apps:
+          type: array
+          items:
+            type: string
+        contract_amount:
+          type: number
+        max_users:
+          type: integer
+        max_trans_per_month:
+          type: integer
+        max_trans_per_day:
+          type: integer
+        max_items:
+          type: integer
+        max_customers:
+          type: integer
+        max_branches:
+          type: integer
+        max_storage:
+          type: integer
+        expires_at:
+          type: string
+          format: date-time
+        is_registered:
+          type: boolean
+        provision_api_key:
+          type: string
+        check_interval:
+          type: string
+
+    Proposal:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        project_id:
+          type: string
+          format: uuid
+        company_id:
+          type: string
+          format: uuid
+        product_id:
+          type: string
+          format: uuid
+        version:
+          type: integer
+        status:
+          type: string
+          enum: [draft, submitted, approved, rejected]
+        plan:
+          type: string
+          enum: [saas, dedicated]
+        modules:
+          type: array
+          items:
+            type: string
+        apps:
+          type: array
+          items:
+            type: string
+        contract_amount:
+          type: number
+        max_users:
+          type: integer
+        expires_at:
+          type: string
+          format: date-time
+        notes:
+          type: string
+        owner_notes:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Dashboard:
+      type: object
+      properties:
+        total_licenses:
+          type: integer
+        active_licenses:
+          type: integer
+        pending_licenses:
+          type: integer
+        suspended_licenses:
+          type: integer
+        expired_licenses:
+          type: integer
+        total_companies:
+          type: integer
+        total_proposals:
+          type: integer
+        pending_proposals:
+          type: integer
+        total_revenue:
+          type: number
+        expiring_licenses:
+          type: array
+          items:
+            type: object
+        recent_activity:
+          type: array
+          items:
+            type: object
+
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: '#/components/schemas/User'
+
+paths:
+  /api/v1/register:
+    post:
+      tags: [Public API]
+      summary: Register client instance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - product_slug
+                - instance_url
+                - instance_name
+                - provision_api_key
+              properties:
+                product_slug:
+                  type: string
+                instance_url:
+                  type: string
+                instance_name:
+                  type: string
+                provision_api_key:
+                  type: string
+      responses:
+        '201':
+          description: License registered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  license_key:
+                    type: string
+                  product:
+                    type: string
+                  check_interval:
+                    type: string
+                  valid:
+                    type: boolean
+                  message:
+                    type: string
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Invalid API key
+        '409':
+          description: Already registered
+
+  /api/v1/validate:
+    get:
+      tags: [Public API]
+      summary: Validate license status
+      parameters:
+        - name: key
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: License validation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                  license_key:
+                    type: string
+                  reason:
+                    type: string
+                  check_interval:
+                    type: string
+
+  /api/internal/setup/status:
+    get:
+      tags: [Setup]
+      summary: Check setup status
+      responses:
+        '200':
+          description: Setup status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  is_setup:
+                    type: boolean
+
+  /api/internal/setup/install:
+    post:
+      tags: [Setup]
+      summary: Install superuser (first-run)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password]
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Setup successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+
+  /api/internal/auth/login:
+    post:
+      tags: [Auth]
+      summary: Login user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid credentials
+
+  /api/internal/auth/me:
+    get:
+      tags: [Auth]
+      summary: Get current user
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  /api/internal/dashboard:
+    get:
+      tags: [Dashboard]
+      summary: Get dashboard statistics
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Dashboard data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dashboard'
+
+  /api/internal/companies:
+    get:
+      tags: [Companies]
+      summary: List all companies
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Company list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Company'
+    post:
+      tags: [Companies]
+      summary: Create company
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                phone:
+                  type: string
+                address:
+                  type: string
+      responses:
+        '201':
+          description: Company created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Company'
+
+  /api/internal/companies/{id}:
+    get:
+      tags: [Companies]
+      summary: Get company detail
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Company detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Company'
+    put:
+      tags: [Companies]
+      summary: Update company
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                phone:
+                  type: string
+                address:
+                  type: string
+      responses:
+        '200':
+          description: Company updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Company'
+    delete:
+      tags: [Companies]
+      summary: Delete company
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Company deleted
+
+  /api/internal/companies/{companyID}/projects:
+    get:
+      tags: [Projects]
+      summary: List projects by company
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: companyID
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Project list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Project'
+    post:
+      tags: [Projects]
+      summary: Create project
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: companyID
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+      responses:
+        '201':
+          description: Project created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+
+  /api/internal/projects/{id}:
+    get:
+      tags: [Projects]
+      summary: Get project detail
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Project detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+    put:
+      tags: [Projects]
+      summary: Update project
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+      responses:
+        '200':
+          description: Project updated
+    delete:
+      tags: [Projects]
+      summary: Delete project
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Project deleted
+
+  /api/internal/licenses:
+    get:
+      tags: [Licenses]
+      summary: List all licenses
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: License list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/License'
+    post:
+      tags: [Licenses]
+      summary: Create license
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - project_id
+                - company_id
+                - product_id
+                - plan
+              properties:
+                project_id:
+                  type: string
+                  format: uuid
+                company_id:
+                  type: string
+                  format: uuid
+                product_id:
+                  type: string
+                  format: uuid
+                plan:
+                  type: string
+                  enum: [saas, dedicated]
+                modules:
+                  type: array
+                  items:
+                    type: string
+                apps:
+                  type: array
+                  items:
+                    type: string
+                contract_amount:
+                  type: number
+                max_users:
+                  type: integer
+                expires_at:
+                  type: string
+                  format: date-time
+      responses:
+        '201':
+          description: License created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/License'
+
+  /api/internal/licenses/{id}:
+    get:
+      tags: [Licenses]
+      summary: Get license detail
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: License detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/License'
+
+  /api/internal/licenses/{id}/activate:
+    put:
+      tags: [Licenses]
+      summary: Activate license
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: License activated
+
+  /api/internal/licenses/{id}/suspend:
+    put:
+      tags: [Licenses]
+      summary: Suspend license
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: License suspended
+
+  /api/internal/licenses/{id}/renew:
+    put:
+      tags: [Licenses]
+      summary: Renew license
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                new_expires_at:
+                  type: string
+                  format: date-time
+      responses:
+        '200':
+          description: License renewed
+
+  /api/internal/licenses/{id}/constraints:
+    put:
+      tags: [Licenses]
+      summary: Update license constraints
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                modules:
+                  type: array
+                  items:
+                    type: string
+                apps:
+                  type: array
+                  items:
+                    type: string
+                max_users:
+                  type: integer
+                max_trans_per_month:
+                  type: integer
+                expires_at:
+                  type: string
+                  format: date-time
+      responses:
+        '200':
+          description: Constraints updated
+
+  /api/internal/licenses/{id}/audit:
+    get:
+      tags: [Licenses]
+      summary: Get license audit trail
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Audit logs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+
+  /api/internal/proposals:
+    get:
+      tags: [Proposals]
+      summary: List all proposals
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Proposal list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Proposal'
+    post:
+      tags: [Proposals]
+      summary: Create proposal
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - project_id
+                - company_id
+                - product_id
+                - plan
+              properties:
+                project_id:
+                  type: string
+                  format: uuid
+                company_id:
+                  type: string
+                  format: uuid
+                product_id:
+                  type: string
+                  format: uuid
+                plan:
+                  type: string
+                  enum: [saas, dedicated]
+                modules:
+                  type: array
+                  items:
+                    type: string
+                contract_amount:
+                  type: number
+                expires_at:
+                  type: string
+                  format: date-time
+                notes:
+                  type: string
+      responses:
+        '201':
+          description: Proposal created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Proposal'
+
+  /api/internal/proposals/{id}:
+    get:
+      tags: [Proposals]
+      summary: Get proposal detail
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Proposal detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Proposal'
+    put:
+      tags: [Proposals]
+      summary: Update proposal
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                plan:
+                  type: string
+                modules:
+                  type: array
+                  items:
+                    type: string
+                contract_amount:
+                  type: number
+                notes:
+                  type: string
+                owner_notes:
+                  type: string
+      responses:
+        '200':
+          description: Proposal updated
+
+  /api/internal/proposals/{id}/submit:
+    put:
+      tags: [Proposals]
+      summary: Submit proposal
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Proposal submitted
+
+  /api/internal/proposals/{id}/approve:
+    put:
+      tags: [Proposals]
+      summary: Approve proposal
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                owner_notes:
+                  type: string
+      responses:
+        '200':
+          description: Proposal approved
+
+  /api/internal/proposals/{id}/reject:
+    put:
+      tags: [Proposals]
+      summary: Reject proposal
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: Proposal rejected
+
+  /api/internal/proposals/{id}/pdf:
+    get:
+      tags: [Proposals]
+      summary: Download proposal PDF
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: PDF file
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+
+  /api/internal/products:
+    get:
+      tags: [Products]
+      summary: List all products
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Product list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Product'
+    post:
+      tags: [Products]
+      summary: Create product
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, slug]
+              properties:
+                name:
+                  type: string
+                slug:
+                  type: string
+                description:
+                  type: string
+                is_active:
+                  type: boolean
+      responses:
+        '201':
+          description: Product created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+
+  /api/internal/products/{id}:
+    get:
+      tags: [Products]
+      summary: Get product detail
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Product detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+    put:
+      tags: [Products]
+      summary: Update product
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                slug:
+                  type: string
+                description:
+                  type: string
+                is_active:
+                  type: boolean
+      responses:
+        '200':
+          description: Product updated
+    delete:
+      tags: [Products]
+      summary: Delete product
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Product deleted
+
+  /api/internal/users:
+    get:
+      tags: [Users]
+      summary: List all users (superuser only)
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: User list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+    post:
+      tags: [Users]
+      summary: Create user (superuser only)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password, role]
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                role:
+                  type: string
+                  enum: [project_owner, sales]
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  /api/internal/users/{id}/active:
+    put:
+      tags: [Users]
+      summary: Set user active status (superuser only)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [is_active]
+              properties:
+                is_active:
+                  type: boolean
+      responses:
+        '200':
+          description: User status updated
+
+  /api/internal/notifications:
+    get:
+      tags: [Notifications]
+      summary: List notifications
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Notification list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+
+  /api/internal/notifications/unread-count:
+    get:
+      tags: [Notifications]
+      summary: Get unread notification count
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Unread count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+
+  /api/internal/notifications/{id}/read:
+    put:
+      tags: [Notifications]
+      summary: Mark notification as read
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Notification marked as read
+
+  /api/internal/notifications/read-all:
+    put:
+      tags: [Notifications]
+      summary: Mark all notifications as read
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: All notifications marked as read

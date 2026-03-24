@@ -466,6 +466,9 @@ func (p *CompaniesListPage) renderRow(c CompanyItem) app.UI {
 						Style("color", "#E2D9F3").
 						Style("font-size", "14px").
 						Style("font-weight", "500").
+						Style("overflow", "hidden").
+						Style("text-overflow", "ellipsis").
+						Style("white-space", "nowrap").
 						Text(c.Name),
 					app.If(c.Address != nil && *c.Address != "",
 						func() app.UI {
@@ -473,6 +476,9 @@ func (p *CompaniesListPage) renderRow(c CompanyItem) app.UI {
 								Style("color", "#9B8DB5").
 								Style("font-size", "12px").
 								Style("margin-top", "2px").
+								Style("overflow", "hidden").
+								Style("text-overflow", "ellipsis").
+								Style("white-space", "nowrap").
 								Text(*c.Address)
 						},
 					),

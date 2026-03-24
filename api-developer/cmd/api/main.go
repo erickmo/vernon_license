@@ -28,6 +28,8 @@ import (
 	"github.com/flashlab/vernon-license/internal/publicapi"
 	"github.com/flashlab/vernon-license/internal/service"
 	ratelimit "github.com/flashlab/vernon-license/pkg/middleware"
+	"github.com/flashlab/vernon-license/pkg/scheduler"
+	"time"
 )
 
 func main() {
@@ -79,6 +81,9 @@ func main() {
 		// HTTP server
 		fx.Provide(provideRouter),
 		fx.Invoke(startServer),
+
+		// Background scheduler
+		fx.Invoke(startScheduler),
 	)
 
 	fxApp.Run()
@@ -181,6 +186,7 @@ func provideRouter(
 		r.Get("/api/internal/licenses", licenseHandler.List)
 		r.Post("/api/internal/licenses", licenseHandler.Create)
 		r.Get("/api/internal/licenses/{id}", licenseHandler.GetByID)
+		r.Get("/api/internal/licenses/{id}/provision-key", licenseHandler.GetProvisionKey)
 		r.Put("/api/internal/licenses/{id}/activate", licenseHandler.Activate)
 		r.Put("/api/internal/licenses/{id}/suspend", licenseHandler.Suspend)
 		r.Put("/api/internal/licenses/{id}/renew", licenseHandler.Renew)
@@ -269,6 +275,30 @@ func startServer(lc fx.Lifecycle, r *chi.Mux, cfg *config.Config, log *zap.Logge
 		OnStop: func(ctx context.Context) error {
 			log.Info("Shutting down server")
 			return server.Shutdown(ctx)
+		},
+	})
+}
+
+// startScheduler mendaftarkan lifecycle hook untuk start/stop background scheduler.
+// Scheduler menjalankan job provision key rotation setiap 30 menit.
+func startScheduler(lc fx.Lifecycle, provisionService *service.ProvisionService, log *zap.Logger) {
+	sched := scheduler.New(log)
+
+	// Schedule provision key rotation setiap 30 menit
+	sched.Schedule("rotate-provision-keys", 30*time.Minute, func(ctx context.Context) error {
+		return provisionService.RotateAll(ctx)
+	})
+
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			go sched.Start(ctx)
+			log.Info("Background scheduler started")
+			return nil
+		},
+		OnStop: func(ctx context.Context) error {
+			sched.Stop()
+			log.Info("Background scheduler stopped")
+			return nil
 		},
 	})
 }
