@@ -2,3 +2,10 @@
 .env
 *.env
 !*.env.example
+
+# Compiled binaries
+api-developer/api
+api-developer/bin/
+
+# macOS
+.DS_Store

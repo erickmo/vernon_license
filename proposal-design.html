@@ -1,0 +1,1410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FlashLab Proposal Design</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary: #4D2975;
+    --primary-light: #6B3FA0;
+    --primary-dark: #3A1D5C;
+    --accent: #26B8B0;
+    --accent-light: #E8F8F7;
+    --amber: #E9A800;
+    --amber-light: #FFF8E1;
+    --success: #22C55E;
+    --error: #EF4444;
+    --dark: #1A1A2E;
+    --gray-900: #111827;
+    --gray-700: #374151;
+    --gray-500: #6B7280;
+    --gray-400: #9CA3AF;
+    --gray-300: #D1D5DB;
+    --gray-200: #E5E7EB;
+    --gray-100: #F3F4F6;
+    --gray-50: #F9FAFB;
+    --white: #FFFFFF;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+    background: #E5E7EB;
+    color: var(--gray-900);
+    padding: 40px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+  }
+
+  .page-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-500);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-top: 16px;
+  }
+
+  .page {
+    width: 794px; /* A4 width at 96dpi */
+    min-height: 1123px; /* A4 height */
+    background: var(--white);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.06);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* ====== PAGE 1: COVER ====== */
+  .cover {
+    display: flex;
+    flex-direction: column;
+    height: 1123px;
+    position: relative;
+  }
+
+  .cover-accent-bar {
+    height: 8px;
+    background: linear-gradient(90deg, var(--primary) 0%, var(--accent) 50%, var(--amber) 100%);
+  }
+
+  .cover-top {
+    padding: 48px 64px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .cover-logo {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .cover-logo-icon {
+    width: 48px;
+    height: 48px;
+    background: var(--primary);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 800;
+    font-size: 20px;
+    letter-spacing: -1px;
+  }
+
+  .cover-logo-text {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--primary);
+    letter-spacing: -0.5px;
+  }
+
+  .cover-logo-sub {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--gray-500);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+
+  .cover-doc-type {
+    background: var(--primary);
+    color: white;
+    padding: 8px 20px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .cover-hero {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 0 64px;
+    position: relative;
+  }
+
+  .cover-hero::before {
+    content: '';
+    position: absolute;
+    right: -60px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(38,184,176,0.06) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+
+  .cover-version-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--accent-light);
+    color: var(--accent);
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-bottom: 20px;
+    width: fit-content;
+  }
+
+  .cover-version-badge .dot {
+    width: 6px;
+    height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+  }
+
+  .cover-title {
+    font-size: 42px;
+    font-weight: 800;
+    color: var(--primary-dark);
+    line-height: 1.15;
+    letter-spacing: -1.5px;
+    margin-bottom: 12px;
+  }
+
+  .cover-subtitle {
+    font-size: 18px;
+    color: var(--gray-500);
+    font-weight: 400;
+    line-height: 1.5;
+    max-width: 480px;
+  }
+
+  .cover-meta-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    margin: 0 64px 0;
+    border-top: 1px solid var(--gray-200);
+    border-bottom: 1px solid var(--gray-200);
+  }
+
+  .cover-meta-item {
+    padding: 24px 0;
+    border-right: 1px solid var(--gray-200);
+    padding-right: 32px;
+  }
+
+  .cover-meta-item:nth-child(even) {
+    border-right: none;
+    padding-left: 32px;
+    padding-right: 0;
+  }
+
+  .cover-meta-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--gray-400);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 6px;
+  }
+
+  .cover-meta-value {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--gray-900);
+  }
+
+  .cover-footer {
+    padding: 32px 64px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .cover-footer-contact {
+    font-size: 12px;
+    color: var(--gray-500);
+    line-height: 1.6;
+  }
+
+  .cover-footer-qr {
+    width: 64px;
+    height: 64px;
+    background: var(--gray-100);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    color: var(--gray-400);
+    text-align: center;
+  }
+
+  /* ====== PAGE 2: CHANGELOG (v2+ only) ====== */
+  .changelog-banner {
+    background: linear-gradient(135deg, #FFF7ED 0%, #FFF3E0 100%);
+    border: 1px solid #FED7AA;
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .changelog-banner-icon {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    background: var(--amber);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .changelog-banner-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #92400E;
+    margin-bottom: 2px;
+  }
+
+  .changelog-banner-text {
+    font-size: 13px;
+    color: #B45309;
+    line-height: 1.5;
+  }
+
+  .change-group {
+    margin-bottom: 20px;
+  }
+
+  .change-group-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .change-group-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+
+  .change-group-dot.added { background: var(--success); }
+  .change-group-dot.removed { background: var(--error); }
+  .change-group-dot.changed { background: var(--amber); }
+  .change-group-dot.unchanged { background: var(--gray-300); }
+
+  .change-group-label {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+  }
+
+  .change-group-label.added { color: #166534; }
+  .change-group-label.removed { color: #991B1B; }
+  .change-group-label.changed { color: #92400E; }
+  .change-group-label.unchanged { color: var(--gray-400); }
+
+  .change-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 6px;
+    font-size: 14px;
+  }
+
+  .change-item.added {
+    background: #F0FDF4;
+    border-left: 3px solid var(--success);
+    color: #166534;
+  }
+
+  .change-item.removed {
+    background: #FEF2F2;
+    border-left: 3px solid var(--error);
+    color: #991B1B;
+    text-decoration: line-through;
+  }
+
+  .change-item.changed {
+    background: #FFFBEB;
+    border-left: 3px solid var(--amber);
+    color: #92400E;
+  }
+
+  .change-item-field {
+    font-weight: 600;
+    min-width: 160px;
+  }
+
+  .change-item-arrow {
+    margin: 0 10px;
+    font-size: 16px;
+    opacity: 0.6;
+  }
+
+  .change-item-old {
+    text-decoration: line-through;
+    opacity: 0.6;
+    margin-right: 6px;
+  }
+
+  .change-item-new {
+    font-weight: 700;
+  }
+
+  .change-badge {
+    display: inline-flex;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-left: auto;
+  }
+
+  .change-badge.new-badge {
+    background: #DCFCE7;
+    color: #166534;
+  }
+
+  .change-badge.removed-badge {
+    background: #FEE2E2;
+    color: #991B1B;
+  }
+
+  .unchanged-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 0 16px;
+  }
+
+  .unchanged-chip {
+    background: var(--gray-100);
+    color: var(--gray-500);
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .rejection-context {
+    background: #FEF2F2;
+    border: 1px solid #FECACA;
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 20px;
+  }
+
+  .rejection-context-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #991B1B;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .rejection-context-text {
+    font-size: 14px;
+    color: #7F1D1D;
+    line-height: 1.6;
+    font-style: italic;
+  }
+
+  .sales-notes-box {
+    background: #EFF6FF;
+    border: 1px solid #BFDBFE;
+    border-radius: 12px;
+    padding: 20px 24px;
+  }
+
+  .sales-notes-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #1E40AF;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .sales-notes-text {
+    font-size: 14px;
+    color: #1E3A5F;
+    line-height: 1.6;
+  }
+
+  /* Inline diff annotations for product/pricing pages */
+  .inline-new-badge {
+    display: inline-flex;
+    background: #DCFCE7;
+    color: #166534;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+
+  .inline-old-value {
+    text-decoration: line-through;
+    color: var(--gray-400);
+    font-size: 12px;
+    margin-right: 4px;
+  }
+
+  .inline-arrow {
+    color: var(--amber);
+    font-size: 11px;
+    margin: 0 2px;
+  }
+
+  .constraint-card.changed {
+    border: 2px solid var(--amber);
+    background: #FFFBEB;
+  }
+
+  .constraint-old {
+    font-size: 12px;
+    color: var(--gray-400);
+    text-decoration: line-through;
+    margin-top: 2px;
+  }
+
+  .constraint-arrow {
+    font-size: 14px;
+    color: var(--amber);
+  }
+
+  .module-item.new-item {
+    border-left: 3px solid var(--success);
+    background: #F0FDF4;
+  }
+
+  /* ====== PAGE 3: PRODUCT & MODULES ====== */
+  .content-page {
+    padding: 48px 64px;
+    position: relative;
+  }
+
+  .content-page::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary) 0%, var(--accent) 100%);
+  }
+
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 40px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--gray-200);
+  }
+
+  .page-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .page-header-logo {
+    width: 28px;
+    height: 28px;
+    background: var(--primary);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 800;
+    font-size: 12px;
+  }
+
+  .page-header-text {
+    font-size: 13px;
+    color: var(--gray-500);
+    font-weight: 500;
+  }
+
+  .page-header-ref {
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--gray-400);
+  }
+
+  .section {
+    margin-bottom: 36px;
+  }
+
+  .section-number {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 6px;
+  }
+
+  .section-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--primary-dark);
+    letter-spacing: -0.5px;
+    margin-bottom: 16px;
+  }
+
+  .product-card {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+    border-radius: 16px;
+    padding: 32px;
+    color: white;
+    margin-bottom: 8px;
+  }
+
+  .product-card-name {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    margin-bottom: 4px;
+  }
+
+  .product-card-desc {
+    font-size: 14px;
+    opacity: 0.8;
+    margin-bottom: 20px;
+  }
+
+  .product-card-plan {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255,255,255,0.2);
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .modules-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 16px;
+  }
+
+  .module-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+    background: var(--gray-50);
+    border-radius: 10px;
+    border: 1px solid var(--gray-200);
+  }
+
+  .module-icon {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    background: var(--accent-light);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  .module-icon.app-icon {
+    background: #F3E8FF;
+    color: var(--primary);
+  }
+
+  .module-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-900);
+    margin-bottom: 2px;
+  }
+
+  .module-desc {
+    font-size: 11px;
+    color: var(--gray-500);
+    line-height: 1.4;
+  }
+
+  .subsection-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--gray-700);
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .subsection-count {
+    background: var(--accent);
+    color: white;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+  }
+
+  /* ====== PAGE 3: PRICING & CONSTRAINTS ====== */
+  .pricing-highlight {
+    background: linear-gradient(135deg, #F8F0FF 0%, #F0EDFF 100%);
+    border-radius: 16px;
+    padding: 32px;
+    text-align: center;
+    margin-bottom: 24px;
+    border: 1px solid rgba(77,41,117,0.1);
+  }
+
+  .pricing-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--gray-500);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+  }
+
+  .pricing-amount {
+    font-size: 40px;
+    font-weight: 800;
+    color: var(--primary);
+    letter-spacing: -1px;
+  }
+
+  .pricing-currency {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--gray-500);
+  }
+
+  .pricing-period {
+    font-size: 13px;
+    color: var(--gray-400);
+    margin-top: 4px;
+  }
+
+  .pricing-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--gray-200);
+    margin-bottom: 24px;
+  }
+
+  .pricing-table th {
+    background: var(--primary);
+    color: white;
+    padding: 14px 20px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-align: left;
+  }
+
+  .pricing-table th:last-child {
+    text-align: right;
+  }
+
+  .pricing-table td {
+    padding: 14px 20px;
+    font-size: 14px;
+    border-bottom: 1px solid var(--gray-100);
+  }
+
+  .pricing-table tr:last-child td {
+    border-bottom: none;
+  }
+
+  .pricing-table tr:nth-child(even) td {
+    background: var(--gray-50);
+  }
+
+  .pricing-table td:last-child {
+    text-align: right;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 500;
+    font-size: 13px;
+  }
+
+  .pricing-table .total-row td {
+    background: var(--accent-light) !important;
+    font-weight: 700;
+    color: var(--primary);
+    border-top: 2px solid var(--accent);
+  }
+
+  .constraints-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+
+  .constraint-card {
+    background: var(--gray-50);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    border: 1px solid var(--gray-200);
+  }
+
+  .constraint-value {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--primary);
+    letter-spacing: -1px;
+  }
+
+  .constraint-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--gray-500);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 4px;
+  }
+
+  /* ====== PAGE 4: VALIDITY & APPROVAL ====== */
+  .validity-box {
+    background: var(--gray-50);
+    border-radius: 12px;
+    padding: 28px;
+    border: 1px solid var(--gray-200);
+    margin-bottom: 24px;
+  }
+
+  .validity-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+  }
+
+  .validity-row:not(:last-child) {
+    border-bottom: 1px solid var(--gray-200);
+  }
+
+  .validity-label {
+    font-size: 13px;
+    color: var(--gray-500);
+    font-weight: 500;
+  }
+
+  .validity-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--gray-900);
+  }
+
+  .approval-box {
+    background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%);
+    border: 1px solid #A7F3D0;
+    border-radius: 12px;
+    padding: 28px;
+    margin-bottom: 24px;
+  }
+
+  .approval-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--success);
+    color: white;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  .approval-badge .check {
+    font-size: 14px;
+  }
+
+  .approval-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .approval-detail-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(22,101,52,0.6);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+
+  .approval-detail-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: #166534;
+  }
+
+  .terms-section {
+    margin-bottom: 24px;
+  }
+
+  .terms-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--gray-700);
+    margin-bottom: 12px;
+  }
+
+  .terms-text {
+    font-size: 12px;
+    color: var(--gray-500);
+    line-height: 1.7;
+  }
+
+  .page-footer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 20px 64px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid var(--gray-200);
+    background: var(--white);
+  }
+
+  .page-footer-text {
+    font-size: 11px;
+    color: var(--gray-400);
+  }
+
+  .page-number {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--gray-400);
+    font-weight: 500;
+  }
+
+  .divider {
+    height: 1px;
+    background: var(--gray-200);
+    margin: 24px 0;
+  }
+</style>
+</head>
+<body>
+
+<!-- ========== PAGE 1: COVER ========== -->
+<div class="page-label">Page 1 — Cover</div>
+<div class="page cover">
+  <div class="cover-accent-bar"></div>
+  
+  <div class="cover-top">
+    <div class="cover-logo">
+      <div class="cover-logo-icon">FL</div>
+      <div>
+        <div class="cover-logo-text">FlashLab</div>
+        <div class="cover-logo-sub">Technology Solutions</div>
+      </div>
+    </div>
+    <div class="cover-doc-type">Proposal</div>
+  </div>
+
+  <div class="cover-hero">
+    <div class="cover-version-badge">
+      <span class="dot"></span>
+      Version 2 — Approved
+    </div>
+    <div class="cover-title">Software License<br>Proposal</div>
+    <div class="cover-subtitle">Penawaran solusi FlashERP untuk PT Maju Bersama — sistem ERP terintegrasi dengan modul akuntansi, penjualan, dan pembelian.</div>
+  </div>
+
+  <div class="cover-meta-grid">
+    <div class="cover-meta-item">
+      <div class="cover-meta-label">Prepared For</div>
+      <div class="cover-meta-value">PT Maju Bersama</div>
+    </div>
+    <div class="cover-meta-item">
+      <div class="cover-meta-label">Proposal Number</div>
+      <div class="cover-meta-value" style="font-family: 'JetBrains Mono', monospace; font-size: 14px;">FL-A1B2C3D4-v2</div>
+    </div>
+    <div class="cover-meta-item">
+      <div class="cover-meta-label">Date</div>
+      <div class="cover-meta-value">24 March 2026</div>
+    </div>
+    <div class="cover-meta-item">
+      <div class="cover-meta-label">Valid Until</div>
+      <div class="cover-meta-value">1 January 2028</div>
+    </div>
+  </div>
+
+  <div class="cover-footer">
+    <div class="cover-footer-contact">
+      FlashLab · Jl. Teknologi No. 1, Jakarta<br>
+      +62-21-1234567 · <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="fc9499909093bc9a909d8f94909d9ed29598">[email&#160;protected]</a>
+    </div>
+    <div class="cover-footer-qr">QR<br>Code</div>
+  </div>
+</div>
+
+<!-- ========== PAGE 2: CHANGELOG (v2+ only) ========== -->
+<div class="page-label">Page 2 — Revision Changelog (only appears for v2+)</div>
+<div class="page">
+  <div class="content-page">
+    <div class="page-header">
+      <div class="page-header-left">
+        <div class="page-header-logo">FL</div>
+        <div class="page-header-text">FlashLab · Software License Proposal</div>
+      </div>
+      <div class="page-header-ref">FL-A1B2C3D4-v2</div>
+    </div>
+
+    <div class="section">
+      <div class="section-number">Revision History</div>
+      <div class="section-title">What Changed from Version 1</div>
+
+      <div class="changelog-banner">
+        <div class="changelog-banner-icon">Δ</div>
+        <div>
+          <div class="changelog-banner-title">Revision Summary</div>
+          <div class="changelog-banner-text">Tambah modul Purchasing, naikkan max_users dari 50 ke 75, contract amount naik dari Rp 15.000.000 ke Rp 18.000.000, perpanjang validity ke 1 Juni 2028.</div>
+        </div>
+      </div>
+
+      <!-- Rejection context from previous version -->
+      <div class="rejection-context">
+        <div class="rejection-context-label">✕ Previous Rejection Reason (v1)</div>
+        <div class="rejection-context-text">"Contract amount terlalu rendah untuk 50 users. Minimum Rp 17jt. Pertimbangkan juga tambah modul Purchasing karena klien butuh fitur PO management."</div>
+      </div>
+
+      <!-- ADDED -->
+      <div class="change-group">
+        <div class="change-group-header">
+          <div class="change-group-dot added"></div>
+          <div class="change-group-label added">Added</div>
+        </div>
+        <div class="change-item added">
+          <span class="change-item-field">Module: Purchasing</span>
+          <span style="margin-left: auto; font-size: 12px;">Modul pembelian untuk manajemen vendor, PO, dan receiving</span>
+          <span class="change-badge new-badge">NEW</span>
+        </div>
+      </div>
+
+      <!-- CHANGED -->
+      <div class="change-group">
+        <div class="change-group-header">
+          <div class="change-group-dot changed"></div>
+          <div class="change-group-label changed">Changed</div>
+        </div>
+        <div class="change-item changed">
+          <span class="change-item-field">Max Users</span>
+          <span class="change-item-old">50</span>
+          <span class="change-item-arrow">→</span>
+          <span class="change-item-new">75</span>
+        </div>
+        <div class="change-item changed">
+          <span class="change-item-field">Contract Amount</span>
+          <span class="change-item-old">Rp 15.000.000</span>
+          <span class="change-item-arrow">→</span>
+          <span class="change-item-new">Rp 18.000.000</span>
+        </div>
+        <div class="change-item changed">
+          <span class="change-item-field">Max Trans / Month</span>
+          <span class="change-item-old">10.000</span>
+          <span class="change-item-arrow">→</span>
+          <span class="change-item-new">15.000</span>
+        </div>
+        <div class="change-item changed">
+          <span class="change-item-field">Max Trans / Day</span>
+          <span class="change-item-old">500</span>
+          <span class="change-item-arrow">→</span>
+          <span class="change-item-new">750</span>
+        </div>
+        <div class="change-item changed">
+          <span class="change-item-field">Max Items</span>
+          <span class="change-item-old">5.000</span>
+          <span class="change-item-arrow">→</span>
+          <span class="change-item-new">7.500</span>
+        </div>
+        <div class="change-item changed">
+          <span class="change-item-field">Max Customers</span>
+          <span class="change-item-old">1.000</span>
+          <span class="change-item-arrow">→</span>
+          <span class="change-item-new">1.500</span>
+        </div>
+        <div class="change-item changed">
+          <span class="change-item-field">Max Branches</span>
+          <span class="change-item-old">3</span>
+          <span class="change-item-arrow">→</span>
+          <span class="change-item-new">5</span>
+        </div>
+        <div class="change-item changed">
+          <span class="change-item-field">Valid Until</span>
+          <span class="change-item-old">1 Jan 2027</span>
+          <span class="change-item-arrow">→</span>
+          <span class="change-item-new">1 Jun 2028</span>
+        </div>
+      </div>
+
+      <!-- UNCHANGED -->
+      <div class="change-group">
+        <div class="change-group-header">
+          <div class="change-group-dot unchanged"></div>
+          <div class="change-group-label unchanged">Unchanged</div>
+        </div>
+        <div class="unchanged-list">
+          <span class="unchanged-chip">Product: FlashERP</span>
+          <span class="unchanged-chip">Plan: SaaS</span>
+          <span class="unchanged-chip">Module: Accounting</span>
+          <span class="unchanged-chip">Module: Sales</span>
+          <span class="unchanged-chip">App: Web UI</span>
+          <span class="unchanged-chip">App: Sales Person</span>
+        </div>
+      </div>
+
+      <div style="height: 20px;"></div>
+
+      <!-- Sales notes -->
+      <div class="sales-notes-box">
+        <div class="sales-notes-label">📝 Sales Notes</div>
+        <div class="sales-notes-text">Revisi berdasarkan feedback: tambah modul Purchasing sesuai kebutuhan klien untuk PO management. Naikkan max_users ke 75 dan sesuaikan contract amount. Volume discount tetap berlaku.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <div class="page-footer-text">Confidential — PT Maju Bersama</div>
+    <div class="page-number">2 / 5</div>
+  </div>
+</div>
+
+<!-- ========== PAGE 3: PRODUCT & MODULES (with inline diff) ========== -->
+<div class="page-label">Page 3 — Product & Modules (with inline change markers)</div>
+<div class="page">
+  <div class="content-page">
+    <div class="page-header">
+      <div class="page-header-left">
+        <div class="page-header-logo">FL</div>
+        <div class="page-header-text">FlashLab · Software License Proposal</div>
+      </div>
+      <div class="page-header-ref">FL-A1B2C3D4-v2</div>
+    </div>
+
+    <div class="section">
+      <div class="section-number">Section 01</div>
+      <div class="section-title">Product Overview</div>
+      <div class="product-card">
+        <div class="product-card-name">FlashERP</div>
+        <div class="product-card-desc">Sistem ERP terintegrasi untuk mengelola seluruh operasional bisnis Anda — dari akuntansi, penjualan, pembelian, hingga manajemen stok dan SDM.</div>
+        <div class="product-card-plan">◆ SaaS Plan</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-number">Section 02</div>
+      <div class="section-title">Selected Modules & Applications</div>
+
+      <div class="subsection-title" style="margin-top: 16px;">
+        Modules
+        <span class="subsection-count">3</span>
+      </div>
+      <div class="modules-grid">
+        <div class="module-item">
+          <div class="module-icon">Ac</div>
+          <div>
+            <div class="module-name">Accounting</div>
+            <div class="module-desc">Modul akuntansi dan keuangan untuk pencatatan transaksi, laporan keuangan, dan neraca.</div>
+          </div>
+        </div>
+        <div class="module-item">
+          <div class="module-icon">Sa</div>
+          <div>
+            <div class="module-name">Sales</div>
+            <div class="module-desc">Modul penjualan untuk pengelolaan order, invoice, dan pipeline penjualan.</div>
+          </div>
+        </div>
+        <div class="module-item new-item">
+          <div class="module-icon">Pu</div>
+          <div>
+            <div class="module-name">Purchasing <span class="inline-new-badge">NEW in v2</span></div>
+            <div class="module-desc">Modul pembelian untuk manajemen vendor, purchase order, dan receiving.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="subsection-title" style="margin-top: 24px;">
+        Applications
+        <span class="subsection-count">2</span>
+      </div>
+      <div class="modules-grid">
+        <div class="module-item">
+          <div class="module-icon app-icon">W</div>
+          <div>
+            <div class="module-name">Web UI</div>
+            <div class="module-desc">Antarmuka web utama untuk mengakses semua modul dari browser.</div>
+          </div>
+        </div>
+        <div class="module-item">
+          <div class="module-icon app-icon">S</div>
+          <div>
+            <div class="module-name">App Sales Person</div>
+            <div class="module-desc">Aplikasi mobile untuk tim sales di lapangan.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <div class="page-footer-text">Confidential — PT Maju Bersama</div>
+    <div class="page-number">3 / 5</div>
+  </div>
+</div>
+
+<!-- ========== PAGE 3: PRICING & CONSTRAINTS ========== -->
+<div class="page-label">Page 3 — Pricing & Constraints</div>
+<div class="page">
+  <div class="content-page">
+    <div class="page-header">
+      <div class="page-header-left">
+        <div class="page-header-logo">FL</div>
+        <div class="page-header-text">FlashLab · Software License Proposal</div>
+      </div>
+      <div class="page-header-ref">FL-A1B2C3D4-v2</div>
+    </div>
+
+    <div class="section">
+      <div class="section-number">Section 03</div>
+      <div class="section-title">Pricing Breakdown</div>
+
+      <div class="pricing-highlight">
+        <div class="pricing-label">Total Contract Value</div>
+        <div class="pricing-amount"><span class="pricing-currency">Rp </span>18.000.000</div>
+        <div class="pricing-period">Per contract period</div>
+      </div>
+
+      <table class="pricing-table">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Description</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="font-weight: 600;">Base License</td>
+            <td style="color: var(--gray-500);">FlashERP SaaS plan — base fee</td>
+            <td>Rp 5.000.000</td>
+          </tr>
+          <tr>
+            <td style="font-weight: 600;">User Licenses</td>
+            <td style="color: var(--gray-500);">75 users × Rp 100.000/user</td>
+            <td>Rp 7.500.000</td>
+          </tr>
+          <tr>
+            <td style="font-weight: 600;">Module: Accounting</td>
+            <td style="color: var(--gray-500);">Included in base</td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td style="font-weight: 600;">Module: Sales</td>
+            <td style="color: var(--gray-500);">Included in base</td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td style="font-weight: 600;">Module: Purchasing</td>
+            <td style="color: var(--gray-500);">Additional module</td>
+            <td>Rp 2.500.000</td>
+          </tr>
+          <tr>
+            <td style="font-weight: 600;">Custom Adjustment</td>
+            <td style="color: var(--gray-500);">Volume discount</td>
+            <td style="color: var(--success);">- Rp 2.000.000</td>
+          </tr>
+          <tr class="total-row">
+            <td colspan="2" style="text-align: right; font-size: 13px;">TOTAL</td>
+            <td style="font-size: 16px;">Rp 18.000.000</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section">
+      <div class="section-number">Section 04</div>
+      <div class="section-title">License Constraints</div>
+
+      <div class="constraints-grid">
+        <div class="constraint-card changed">
+          <div class="constraint-value">75 <span class="constraint-arrow">↑</span></div>
+          <div class="constraint-old">was 50</div>
+          <div class="constraint-label">Max Users</div>
+        </div>
+        <div class="constraint-card changed">
+          <div class="constraint-value">15K <span class="constraint-arrow">↑</span></div>
+          <div class="constraint-old">was 10K</div>
+          <div class="constraint-label">Trans / Month</div>
+        </div>
+        <div class="constraint-card changed">
+          <div class="constraint-value">750 <span class="constraint-arrow">↑</span></div>
+          <div class="constraint-old">was 500</div>
+          <div class="constraint-label">Trans / Day</div>
+        </div>
+        <div class="constraint-card changed">
+          <div class="constraint-value">7.5K <span class="constraint-arrow">↑</span></div>
+          <div class="constraint-old">was 5K</div>
+          <div class="constraint-label">Max Items</div>
+        </div>
+        <div class="constraint-card changed">
+          <div class="constraint-value">1.5K <span class="constraint-arrow">↑</span></div>
+          <div class="constraint-old">was 1K</div>
+          <div class="constraint-label">Max Customers</div>
+        </div>
+        <div class="constraint-card changed">
+          <div class="constraint-value">5 <span class="constraint-arrow">↑</span></div>
+          <div class="constraint-old">was 3</div>
+          <div class="constraint-label">Max Branches</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <div class="page-footer-text">Confidential — PT Maju Bersama</div>
+    <div class="page-number">4 / 5</div>
+  </div>
+</div>
+
+<!-- ========== PAGE 4: VALIDITY, APPROVAL & TERMS ========== -->
+<div class="page-label">Page 5 — Validity, Approval & Terms</div>
+<div class="page">
+  <div class="content-page">
+    <div class="page-header">
+      <div class="page-header-left">
+        <div class="page-header-logo">FL</div>
+        <div class="page-header-text">FlashLab · Software License Proposal</div>
+      </div>
+      <div class="page-header-ref">FL-A1B2C3D4-v2</div>
+    </div>
+
+    <div class="section">
+      <div class="section-number">Section 05</div>
+      <div class="section-title">Proposal Validity</div>
+
+      <div class="validity-box">
+        <div class="validity-row">
+          <div class="validity-label">License Key</div>
+          <div class="validity-value" style="font-family: 'JetBrains Mono', monospace;">FL-A1B2C3D4</div>
+        </div>
+        <div class="validity-row">
+          <div class="validity-label">Contract Start</div>
+          <div class="validity-value">Upon activation</div>
+        </div>
+        <div class="validity-row">
+          <div class="validity-label">Contract Expiry</div>
+          <div class="validity-value">1 June 2028</div>
+        </div>
+        <div class="validity-row">
+          <div class="validity-label">Proposal Version</div>
+          <div class="validity-value">v2</div>
+        </div>
+        <div class="validity-row">
+          <div class="validity-label">Client Contact</div>
+          <div class="validity-value"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="3352575e5a5d735e52594651564140525e521d505c5e">[email&#160;protected]</a></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-number">Section 06</div>
+      <div class="section-title">Approval</div>
+
+      <div class="approval-box">
+        <div class="approval-badge">
+          <span class="check">✓</span>
+          Approved
+        </div>
+        <div class="approval-details">
+          <div>
+            <div class="approval-detail-label">Approved By</div>
+            <div class="approval-detail-value">Ahmad Rizky</div>
+          </div>
+          <div>
+            <div class="approval-detail-label">Approval Date</div>
+            <div class="approval-detail-value">24 March 2026, 10:00 WIB</div>
+          </div>
+          <div>
+            <div class="approval-detail-label">Submitted By</div>
+            <div class="approval-detail-value">Budi Santoso</div>
+          </div>
+          <div>
+            <div class="approval-detail-label">Submission Date</div>
+            <div class="approval-detail-value">23 March 2026, 14:30 WIB</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section terms-section">
+      <div class="section-number">Section 07</div>
+      <div class="section-title">Terms & Conditions</div>
+      <div class="terms-text">
+        1. This proposal is valid until the expiry date stated above. After expiry, a new proposal must be generated with updated terms.<br><br>
+        2. The license key and access credentials will be provisioned upon activation by FlashLab. The initial password is provided only once during license creation.<br><br>
+        3. The contract amount covers the base license fee, user licenses, and selected modules for the full contract period. Additional modules or users may be added via a new proposal version.<br><br>
+        4. FlashLab reserves the right to suspend the license if payment terms are not met. Reactivation requires approval from a project owner.<br><br>
+        5. All data processed through FlashERP products is subject to FlashLab's Data Processing Agreement and applicable privacy regulations.<br><br>
+        6. Support is provided during business hours (Mon–Fri, 09:00–18:00 WIB) via email and the FlashLab helpdesk portal.
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div style="text-align: center; padding: 16px 0;">
+      <div style="font-size: 11px; color: var(--gray-400); margin-bottom: 4px;">Generated by Vernon License System</div>
+      <div style="font-size: 11px; color: var(--gray-400);">This document is electronical
