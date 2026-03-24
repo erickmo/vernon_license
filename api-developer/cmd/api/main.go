@@ -258,6 +258,7 @@ func startServer(lc fx.Lifecycle, r *chi.Mux, cfg *config.Config, log *zap.Logge
 				return fmt.Errorf("startServer: listen: %w", err)
 			}
 			log.Info("Starting Vernon License API", zap.String("port", cfg.Port))
+			fmt.Printf("\n  Vernon License berjalan → http://localhost:%s\n\n", cfg.Port)
 			go func() {
 				if err := server.Serve(ln); err != nil && err != http.ErrServerClosed {
 					log.Error("server error", zap.Error(err))
