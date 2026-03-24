@@ -57,6 +57,7 @@ type DashboardPage struct {
 	stats     *dashboardStats
 	loading   bool
 	errMsg    string
+	apiBase   string // origin URL, e.g. "http://localhost:8081"
 	authStore store.AuthStore
 }
 
@@ -67,6 +68,7 @@ func (p *DashboardPage) OnNav(ctx app.Context) {
 		ctx.Navigate("/login")
 		return
 	}
+	p.apiBase = app.Window().Get("location").Get("origin").String()
 	p.loadStats(ctx)
 }
 
@@ -85,7 +87,7 @@ func (p *DashboardPage) loadStats(ctx app.Context) {
 		ctx.Dispatch(func(ctx app.Context) {
 			p.loading = false
 			if err != nil {
-				p.errMsg = "Gagal memuat data dashboard."
+				p.errMsg = "Gagal memuat dashboard: " + err.Error()
 				return
 			}
 			p.stats = &stats
@@ -526,6 +528,10 @@ func (p *DashboardPage) renderExpiringTable() app.UI {
 
 // renderAPIInfo merender card informasi public API endpoints.
 func (p *DashboardPage) renderAPIInfo() app.UI {
+	base := p.apiBase
+	if base == "" {
+		base = "http://your-server"
+	}
 	return app.Div().
 		Style("background", "#1A1035").
 		Style("border", "1px solid rgba(77,41,117,0.3)").
@@ -544,8 +550,8 @@ func (p *DashboardPage) renderAPIInfo() app.UI {
 				Style("flex-direction", "column").
 				Style("gap", "10px").
 				Body(
-					renderAPIEndpoint("POST", "/api/v1/register", "Client app mendaftarkan diri → mendapatkan license key"),
-					renderAPIEndpoint("GET", "/api/v1/validate", "Client app memvalidasi lisensi → returns { valid: true/false }"),
+					renderAPIEndpoint("POST", base+"/api/v1/register", "Client app mendaftarkan diri → mendapatkan license key"),
+					renderAPIEndpoint("GET", base+"/api/v1/validate", "Client app memvalidasi lisensi → returns { valid: true/false }"),
 				),
 			app.Div().
 				Style("margin-top", "12px").
@@ -554,12 +560,12 @@ func (p *DashboardPage) renderAPIInfo() app.UI {
 				Style("border-radius", "6px").
 				Style("color", "#9B8DB5").
 				Style("font-size", "12px").
-				Text("Rate limit: 60 req/min per IP · Auth: provision_api_key (register) · license_key (validate)"),
+				Text("Rate limit: 60 req/min per IP · Header: X-Provision-Key (register) · X-License-Key (validate)"),
 		)
 }
 
 // renderAPIEndpoint merender satu baris endpoint.
-func renderAPIEndpoint(method, path, desc string) app.UI {
+func renderAPIEndpoint(method, fullURL, desc string) app.UI {
 	methodColor := "#26B8B0"
 	methodBg := "rgba(38,184,176,0.15)"
 	if method == "POST" {
@@ -590,7 +596,7 @@ func renderAPIEndpoint(method, path, desc string) app.UI {
 						Style("font-size", "13px").
 						Style("font-family", "monospace").
 						Style("font-weight", "500").
-						Text(path),
+						Text(fullURL),
 					app.Div().
 						Style("color", "#9B8DB5").
 						Style("font-size", "12px").

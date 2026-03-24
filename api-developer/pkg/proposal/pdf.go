@@ -119,10 +119,10 @@ const proposalHTMLTemplate = `<!DOCTYPE html>
   }
   .vendor-block { }
   .vendor-name {
-    font-size: 18px;
+    font-size: 15px;
     font-weight: 700;
     color: var(--gray-900);
-    letter-spacing: -0.5px;
+    letter-spacing: -0.3px;
   }
   .vendor-detail {
     font-size: 12px;
@@ -139,7 +139,7 @@ const proposalHTMLTemplate = `<!DOCTYPE html>
     letter-spacing: 1px;
   }
   .doc-title {
-    font-size: 15px;
+    font-size: 13px;
     font-weight: 700;
     color: var(--gray-700);
     margin-top: 4px;
@@ -213,7 +213,7 @@ const proposalHTMLTemplate = `<!DOCTYPE html>
     margin-bottom: 6px;
   }
   .info-card .card-value {
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 700;
     color: var(--gray-900);
   }
@@ -241,10 +241,10 @@ const proposalHTMLTemplate = `<!DOCTYPE html>
     border-left: 3px solid var(--gray-500);
   }
   .changelog-box {
-    background: #FFF8E1;
+    background: var(--gray-100);
     border-radius: 8px;
-    padding: 16px 20px;
-    border-left: 3px solid var(--amber);
+    padding: 14px 18px;
+    border-left: 3px solid var(--gray-400);
   }
   .changelog-summary {
     font-size: 13px;

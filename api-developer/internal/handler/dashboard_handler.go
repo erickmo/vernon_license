@@ -98,25 +98,21 @@ func (h *DashboardHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 		FROM client_licenses
 		WHERE deleted_at IS NULL`
 
-	row := h.db.QueryRowContext(ctx, licenseCountQ)
-	if err := row.Scan(
+	// Semua query bersifat non-fatal — log error tapi tetap lanjut dengan nilai 0.
+	if err := h.db.QueryRowContext(ctx, licenseCountQ).Scan(
 		&stats.TotalLicenses,
 		&stats.ActiveLicenses,
 		&stats.PendingLicenses,
 		&stats.SuspendedLicenses,
 		&stats.ExpiredLicenses,
 	); err != nil {
-		h.logger.Error("DashboardHandler.GetStats: license counts", zap.Error(err))
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Internal server error")
-		return
+		h.logger.Warn("DashboardHandler.GetStats: license counts", zap.Error(err))
 	}
 
 	// Total companies
 	const companyCountQ = `SELECT COUNT(*) FROM companies WHERE deleted_at IS NULL`
 	if err := h.db.QueryRowContext(ctx, companyCountQ).Scan(&stats.TotalCompanies); err != nil {
-		h.logger.Error("DashboardHandler.GetStats: company count", zap.Error(err))
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Internal server error")
-		return
+		h.logger.Warn("DashboardHandler.GetStats: company count", zap.Error(err))
 	}
 
 	// Proposal counts
@@ -126,12 +122,8 @@ func (h *DashboardHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 			COUNT(*) FILTER (WHERE status = 'submitted') AS pending
 		FROM proposals
 		WHERE deleted_at IS NULL`
-
-	row = h.db.QueryRowContext(ctx, proposalCountQ)
-	if err := row.Scan(&stats.TotalProposals, &stats.PendingProposals); err != nil {
-		h.logger.Error("DashboardHandler.GetStats: proposal counts", zap.Error(err))
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Internal server error")
-		return
+	if err := h.db.QueryRowContext(ctx, proposalCountQ).Scan(&stats.TotalProposals, &stats.PendingProposals); err != nil {
+		h.logger.Warn("DashboardHandler.GetStats: proposal counts", zap.Error(err))
 	}
 
 	// Total revenue dari active licenses dengan contract_amount
@@ -140,9 +132,7 @@ func (h *DashboardHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 		FROM client_licenses
 		WHERE status = 'active' AND contract_amount IS NOT NULL AND deleted_at IS NULL`
 	if err := h.db.QueryRowContext(ctx, revenueQ).Scan(&stats.TotalRevenue); err != nil {
-		h.logger.Error("DashboardHandler.GetStats: revenue", zap.Error(err))
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Internal server error")
-		return
+		h.logger.Warn("DashboardHandler.GetStats: revenue", zap.Error(err))
 	}
 
 	// Expiring licenses dalam 30 hari — non-fatal, skip jika query gagal.
