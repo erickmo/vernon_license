@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"syscall"
 	"time"
@@ -99,8 +100,8 @@ func (req *setupRequest) validate() error {
 	if req.AdminName == "" || req.AdminEmail == "" || req.AdminPassword == "" {
 		return fmt.Errorf("nama, email, dan password admin wajib diisi")
 	}
-	if len(req.AdminPassword) < 8 {
-		return fmt.Errorf("password admin minimal 8 karakter")
+	if err := validatePassword(req.AdminPassword); err != nil {
+		return err
 	}
 	if req.AppPort == "" {
 		req.AppPort = "8081"
@@ -279,6 +280,29 @@ func buildEnvContent(req setupRequest) string {
 		"COMPANY_LOGO_PATH=",
 		"",
 	}, "\n")
+}
+
+// validatePassword memastikan password memenuhi syarat keamanan minimum:
+// minimal 12 karakter, huruf kapital, huruf kecil, angka, dan karakter spesial.
+func validatePassword(pw string) error {
+	if len(pw) < 12 {
+		return fmt.Errorf("password minimal 12 karakter")
+	}
+	rules := []struct {
+		re  *regexp.Regexp
+		msg string
+	}{
+		{regexp.MustCompile(`[A-Z]`), "harus ada huruf kapital"},
+		{regexp.MustCompile(`[a-z]`), "harus ada huruf kecil"},
+		{regexp.MustCompile(`[0-9]`), "harus ada angka"},
+		{regexp.MustCompile(`[^A-Za-z0-9]`), "harus ada karakter spesial"},
+	}
+	for _, r := range rules {
+		if !r.re.MatchString(pw) {
+			return fmt.Errorf("password %s", r.msg)
+		}
+	}
+	return nil
 }
 
 // sanitizeIdentifier menghapus karakter berbahaya dari SQL identifier (hanya huruf, angka, underscore).

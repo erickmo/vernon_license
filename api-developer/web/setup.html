@@ -162,6 +162,27 @@
     }
     .redirect-box strong { color: #E2D9F3; }
 
+    /* — Password strength — */
+    .strength-bar {
+      height: 4px; border-radius: 2px;
+      background: rgba(77,41,117,0.2);
+      margin-top: 6px; overflow: hidden;
+    }
+    #strength-fill {
+      height: 100%; border-radius: 2px;
+      width: 0; transition: width 0.2s, background 0.2s;
+    }
+    .strength-hints {
+      font-size: 11px; color: #9B8DB5;
+      margin-top: 5px; line-height: 1.6;
+      min-height: 16px;
+    }
+    .hint-ok  { color: #22C55E; }
+    .hint-bad { color: #EF4444; }
+    .match-hint { font-size: 11px; margin-top: 5px; min-height: 16px; }
+    .match-hint.ok  { color: #22C55E; }
+    .match-hint.bad { color: #EF4444; }
+
     /* — Spinner — */
     .spinner {
       width: 14px; height: 14px;
@@ -260,9 +281,22 @@
 
       <div class="field"><label>Nama Lengkap</label><input id="a_name" placeholder="Admin Vernon"></div>
       <div class="field"><label>Email</label><input id="a_email" type="email" placeholder="admin@company.com"></div>
-      <div class="row">
-        <div class="field"><label>Password</label><input id="a_pw" type="password" placeholder="••••••••"></div>
-        <div class="field"><label>Konfirmasi</label><input id="a_pw2" type="password" placeholder="••••••••"></div>
+      <div class="field">
+        <label>Password</label>
+        <div class="input-group">
+          <input id="a_pw" type="password" placeholder="Min. 12 karakter" oninput="checkStrength(this.value)">
+          <button type="button" class="btn btn-teal" onclick="togglePw('a_pw',this)" tabindex="-1">👁</button>
+        </div>
+        <div class="strength-bar" id="strength-bar"><div id="strength-fill"></div></div>
+        <div class="strength-hints" id="strength-hints"></div>
+      </div>
+      <div class="field">
+        <label>Konfirmasi Password</label>
+        <div class="input-group">
+          <input id="a_pw2" type="password" placeholder="Ulangi password" oninput="checkMatch()">
+          <button type="button" class="btn btn-teal" onclick="togglePw('a_pw2',this)" tabindex="-1">👁</button>
+        </div>
+        <div class="match-hint" id="match-hint"></div>
       </div>
 
       <div class="log" id="log"></div>
@@ -318,10 +352,58 @@
     }
     if (step === 3) {
       if (!g('a_name') || !g('a_email') || !g('a_pw')) return 'Semua field wajib diisi.';
-      if (g('a_pw').length < 8) return 'Password minimal 8 karakter.';
+      const pwErr = passwordRules(g('a_pw'));
+      if (pwErr) return pwErr;
       if (g('a_pw') !== g('a_pw2')) return 'Konfirmasi password tidak cocok.';
     }
     return null;
+  }
+
+  // ── Password security ────────────────────────────
+  function passwordRules(pw) {
+    if (pw.length < 12)          return 'Password minimal 12 karakter.';
+    if (!/[A-Z]/.test(pw))       return 'Password harus ada huruf kapital.';
+    if (!/[a-z]/.test(pw))       return 'Password harus ada huruf kecil.';
+    if (!/[0-9]/.test(pw))       return 'Password harus ada angka.';
+    if (!/[^A-Za-z0-9]/.test(pw)) return 'Password harus ada karakter spesial (!@#$%...).';
+    return null;
+  }
+
+  function checkStrength(pw) {
+    const rules = [
+      { re: /.{12,}/,       label: '12+ karakter' },
+      { re: /[A-Z]/,        label: 'Huruf kapital (A-Z)' },
+      { re: /[a-z]/,        label: 'Huruf kecil (a-z)' },
+      { re: /[0-9]/,        label: 'Angka (0-9)' },
+      { re: /[^A-Za-z0-9]/, label: 'Karakter spesial (!@#$...)' },
+    ];
+    const passed = rules.filter(r => r.re.test(pw)).length;
+    const fill = document.getElementById('strength-fill');
+    const colors = ['#EF4444','#EF4444','#E9A800','#E9A800','#22C55E'];
+    fill.style.width  = (passed / rules.length * 100) + '%';
+    fill.style.background = pw.length === 0 ? 'transparent' : colors[passed - 1] || '#EF4444';
+
+    const hints = document.getElementById('strength-hints');
+    hints.innerHTML = rules.map(r =>
+      `<span class="${r.re.test(pw) ? 'hint-ok' : 'hint-bad'}">${r.re.test(pw) ? '✓' : '✗'} ${r.label}</span>`
+    ).join('  ');
+
+    checkMatch();
+  }
+
+  function checkMatch() {
+    const el = document.getElementById('match-hint');
+    const pw = g('a_pw'), pw2 = g('a_pw2');
+    if (!pw2) { el.textContent = ''; el.className = 'match-hint'; return; }
+    el.textContent = pw === pw2 ? '✓ Password cocok' : '✗ Password tidak cocok';
+    el.className = 'match-hint ' + (pw === pw2 ? 'ok' : 'bad');
+  }
+
+  function togglePw(id, btn) {
+    const input = document.getElementById(id);
+    const show = input.type === 'password';
+    input.type = show ? 'text' : 'password';
+    btn.textContent = show ? '🙈' : '👁';
   }
 
   async function testDB() {
