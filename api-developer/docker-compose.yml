@@ -1,20 +1,22 @@
-version: '3.9'
+version: "3.9"
+
 services:
   postgres:
-    image: postgres:17-alpine
+    image: postgres:17
+    container_name: vernon_db
     environment:
-      POSTGRES_DB: flasherp_developer
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: vernon
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: vernon_license
     ports:
       - "5433:5432"
     volumes:
-      - pg_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U vernon -d vernon_license"]
       interval: 5s
+      timeout: 5s
       retries: 5
 
 volumes:
-  pg_data:
-    driver: local
+  postgres_data:

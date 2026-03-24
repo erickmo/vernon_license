@@ -1,31 +1,51 @@
+// Package licenseutil menyediakan utilitas untuk generate license key dan provision API key.
 package licenseutil
 
 import (
 	"crypto/rand"
+	"encoding/hex"
 	"fmt"
+	"math/big"
 )
 
-// GenerateLicenseKey menghasilkan license key aman format FL-XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX.
+const (
+	// licenseKeyChars adalah karakter yang digunakan untuk license key (uppercase alphanumeric).
+	licenseKeyChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+	// licenseKeyLength adalah panjang random suffix dari license key (8 karakter).
+	licenseKeyLength = 8
+)
+
+// GenerateLicenseKey menghasilkan license key dengan format FL-XXXXXXXX,
+// di mana X adalah 8 karakter random uppercase alphanumeric.
 func GenerateLicenseKey() (string, error) {
-	b := make([]byte, 16)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
+	suffix, err := randomString(licenseKeyChars, licenseKeyLength)
+	if err != nil {
+		return "", fmt.Errorf("GenerateLicenseKey: %w", err)
 	}
-	return fmt.Sprintf("FL-%02X%02X%02X%02X-%02X%02X%02X%02X-%02X%02X%02X%02X-%02X%02X%02X%02X",
-		b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7],
-		b[8], b[9], b[10], b[11], b[12], b[13], b[14], b[15]), nil
+	return "FL-" + suffix, nil
 }
 
-// GenerateSecurePassword menghasilkan password acak 16 karakter.
-func GenerateSecurePassword() (string, error) {
-	const charset = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%&*"
-	b := make([]byte, 16)
+// GenerateProvisionAPIKey menghasilkan 32-character random hex string
+// yang digunakan sebagai provision API key saat setup license.
+func GenerateProvisionAPIKey() (string, error) {
+	b := make([]byte, 16) // 16 bytes = 32 hex chars
 	if _, err := rand.Read(b); err != nil {
-		return "", err
+		return "", fmt.Errorf("GenerateProvisionAPIKey: %w", err)
 	}
-	result := make([]byte, 16)
-	for i, v := range b {
-		result[i] = charset[int(v)%len(charset)]
+	return hex.EncodeToString(b), nil
+}
+
+// randomString menghasilkan random string sepanjang n karakter dari charset yang diberikan.
+func randomString(charset string, n int) (string, error) {
+	charsetLen := big.NewInt(int64(len(charset)))
+	result := make([]byte, n)
+	for i := range result {
+		idx, err := rand.Int(rand.Reader, charsetLen)
+		if err != nil {
+			return "", fmt.Errorf("randomString: %w", err)
+		}
+		result[i] = charset[idx.Int64()]
 	}
 	return string(result), nil
 }

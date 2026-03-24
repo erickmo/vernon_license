@@ -1,3 +1,4 @@
+// Package jwt menyediakan fungsi sign dan verify JWT HS256 untuk Vernon App.
 package jwt
 
 import (
@@ -7,49 +8,52 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+// Claims adalah payload JWT untuk Vernon App.
 type Claims struct {
-	UserID string `json:"user_id"`
-	Email  string `json:"email"`
-	Role   string `json:"role"`
+	Sub  string `json:"sub"`  // user UUID
+	Name string `json:"name"`
+	Role string `json:"role"`
 	jwt.RegisteredClaims
 }
 
-type Service struct {
-	secret   string
-	expHours int
-}
-
-func NewService(secret string, expHours int) *Service {
-	return &Service{secret: secret, expHours: expHours}
-}
-
-func (s *Service) GenerateToken(userID, email, role string) (string, error) {
-	claims := &Claims{
-		UserID: userID,
-		Email:  email,
-		Role:   role,
+// Sign menghasilkan JWT string dari claims.
+// Expiry: 24 jam dari sekarang.
+func Sign(userID, name, role, secret string) (string, error) {
+	now := time.Now().UTC()
+	claims := Claims{
+		Sub:  userID,
+		Name: name,
+		Role: role,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(s.expHours) * time.Hour)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			Subject:   userID,
+			IssuedAt:  jwt.NewNumericDate(now),
+			ExpiresAt: jwt.NewNumericDate(now.Add(24 * time.Hour)),
 		},
 	}
+
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(s.secret))
+	signed, err := token.SignedString([]byte(secret))
+	if err != nil {
+		return "", errors.New("jwt.Sign: failed to sign token")
+	}
+	return signed, nil
 }
 
-func (s *Service) ValidateClaims(tokenStr string) (*Claims, error) {
-	token, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(t *jwt.Token) (any, error) {
+// Verify mem-parse dan memvalidasi JWT string.
+// Returns Claims jika valid, error jika expired atau invalid.
+func Verify(tokenString, secret string) (*Claims, error) {
+	claims := &Claims{}
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (any, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, errors.New("metode signing tidak valid")
+			return nil, errors.New("jwt.Verify: unexpected signing method")
 		}
-		return []byte(s.secret), nil
+		return []byte(secret), nil
 	})
 	if err != nil {
 		return nil, err
 	}
-	claims, ok := token.Claims.(*Claims)
-	if !ok || !token.Valid {
-		return nil, errors.New("token tidak valid")
+	if !token.Valid {
+		return nil, errors.New("jwt.Verify: invalid token")
 	}
 	return claims, nil
 }

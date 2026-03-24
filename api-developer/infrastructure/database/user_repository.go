@@ -3,113 +3,115 @@ package database
 import (
 	"context"
 	"database/sql"
-	"time"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 
-	"github.com/flashlab/flasherp-developer-api/internal/domain/user"
+	"github.com/flashlab/vernon-license/internal/domain"
 )
 
-type userRow struct {
-	ID           uuid.UUID `db:"id"`
-	Name         string    `db:"name"`
-	Email        string    `db:"email"`
-	PasswordHash string    `db:"password_hash"`
-	Role         string    `db:"role"`
-	Status       string    `db:"status"`
-	CreatedAt    time.Time `db:"created_at"`
-	UpdatedAt    time.Time `db:"updated_at"`
-}
-
-func toUserDomain(row *userRow) *user.User {
-	return &user.User{
-		ID:           row.ID,
-		Name:         row.Name,
-		Email:        row.Email,
-		PasswordHash: row.PasswordHash,
-		Role:         row.Role,
-		Status:       row.Status,
-		CreatedAt:    row.CreatedAt,
-		UpdatedAt:    row.UpdatedAt,
-	}
-}
-
-type UserRepository struct {
+// UserRepo adalah implementasi domain.UserRepository berbasis PostgreSQL.
+type UserRepo struct {
 	db *sqlx.DB
 }
 
-func NewUserRepository(db *sqlx.DB) *UserRepository {
-	return &UserRepository{db: db}
+// NewUserRepo membuat instance UserRepo baru.
+func NewUserRepo(db *sqlx.DB) *UserRepo {
+	return &UserRepo{db: db}
 }
 
-func (r *UserRepository) Save(ctx context.Context, u *user.User) error {
-	query := `
-		INSERT INTO users (id, name, email, password_hash, role, status, created_at, updated_at)
-		VALUES (:id, :name, :email, :password_hash, :role, :status, :created_at, :updated_at)`
-	row := &userRow{
-		ID:           u.ID,
-		Name:         u.Name,
-		Email:        u.Email,
-		PasswordHash: u.PasswordHash,
-		Role:         u.Role,
-		Status:       u.Status,
-		CreatedAt:    u.CreatedAt,
-		UpdatedAt:    u.UpdatedAt,
+// FindByID mencari user berdasarkan UUID.
+func (r *UserRepo) FindByID(ctx context.Context, id uuid.UUID) (*domain.User, error) {
+	var u domain.User
+	const q = `
+		SELECT id, name, email, password_hash, role, is_active, created_at, updated_at
+		FROM users
+		WHERE id = $1`
+	if err := r.db.GetContext(ctx, &u, q, id); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, domain.ErrUserNotFound
+		}
+		return nil, fmt.Errorf("UserRepo.FindByID: %w", err)
 	}
-	_, err := r.db.NamedExecContext(ctx, query, row)
-	return err
+	return &u, nil
 }
 
-func (r *UserRepository) Update(ctx context.Context, u *user.User) error {
-	query := `
-		UPDATE users SET
-			name = :name,
-			email = :email,
-			password_hash = :password_hash,
-			role = :role,
-			status = :status,
-			updated_at = :updated_at
-		WHERE id = :id`
-	row := &userRow{
-		ID:           u.ID,
-		Name:         u.Name,
-		Email:        u.Email,
-		PasswordHash: u.PasswordHash,
-		Role:         u.Role,
-		Status:       u.Status,
-		UpdatedAt:    time.Now().UTC(),
+// FindByEmail mencari user berdasarkan email.
+func (r *UserRepo) FindByEmail(ctx context.Context, email string) (*domain.User, error) {
+	var u domain.User
+	const q = `
+		SELECT id, name, email, password_hash, role, is_active, created_at, updated_at
+		FROM users
+		WHERE email = $1`
+	if err := r.db.GetContext(ctx, &u, q, email); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, domain.ErrUserNotFound
+		}
+		return nil, fmt.Errorf("UserRepo.FindByEmail: %w", err)
 	}
-	_, err := r.db.NamedExecContext(ctx, query, row)
-	return err
+	return &u, nil
 }
 
-func (r *UserRepository) GetByID(ctx context.Context, id uuid.UUID) (*user.User, error) {
-	var row userRow
-	err := r.db.GetContext(ctx, &row, `SELECT * FROM users WHERE id = $1`, id)
-	if err == sql.ErrNoRows {
-		return nil, user.ErrNotFound
+// FindAll mengembalikan semua user.
+func (r *UserRepo) FindAll(ctx context.Context) ([]*domain.User, error) {
+	const q = `
+		SELECT id, name, email, password_hash, role, is_active, created_at, updated_at
+		FROM users
+		ORDER BY created_at DESC`
+	var users []*domain.User
+	if err := r.db.SelectContext(ctx, &users, q); err != nil {
+		return nil, fmt.Errorf("UserRepo.FindAll: %w", err)
 	}
+	return users, nil
+}
+
+// Create menyimpan user baru ke database.
+func (r *UserRepo) Create(ctx context.Context, u *domain.User) error {
+	const q = `
+		INSERT INTO users (id, name, email, password_hash, role, is_active, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+		RETURNING created_at, updated_at`
+	if err := r.db.QueryRowContext(ctx, q,
+		u.ID, u.Name, u.Email, u.PasswordHash, u.Role, u.IsActive,
+	).Scan(&u.CreatedAt, &u.UpdatedAt); err != nil {
+		return fmt.Errorf("UserRepo.Create: %w", err)
+	}
+	return nil
+}
+
+// Update memperbarui data user.
+func (r *UserRepo) Update(ctx context.Context, u *domain.User) error {
+	const q = `
+		UPDATE users
+		SET name = $1, email = $2, password_hash = $3, role = $4, is_active = $5,
+		    updated_at = NOW()
+		WHERE id = $6
+		RETURNING updated_at`
+	if err := r.db.QueryRowContext(ctx, q,
+		u.Name, u.Email, u.PasswordHash, u.Role, u.IsActive, u.ID,
+	).Scan(&u.UpdatedAt); err != nil {
+		if err == sql.ErrNoRows {
+			return domain.ErrUserNotFound
+		}
+		return fmt.Errorf("UserRepo.Update: %w", err)
+	}
+	return nil
+}
+
+// SetActive mengaktifkan atau menonaktifkan user.
+func (r *UserRepo) SetActive(ctx context.Context, id uuid.UUID, active bool) error {
+	const q = `UPDATE users SET is_active = $1, updated_at = NOW() WHERE id = $2`
+	res, err := r.db.ExecContext(ctx, q, active, id)
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("UserRepo.SetActive: %w", err)
 	}
-	return toUserDomain(&row), nil
-}
-
-func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*user.User, error) {
-	var row userRow
-	err := r.db.GetContext(ctx, &row, `SELECT * FROM users WHERE email = $1`, email)
-	if err == sql.ErrNoRows {
-		return nil, user.ErrNotFound
-	}
+	n, err := res.RowsAffected()
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("UserRepo.SetActive: rows affected: %w", err)
 	}
-	return toUserDomain(&row), nil
-}
-
-func (r *UserRepository) CountByRole(ctx context.Context, role string) (int, error) {
-	var count int
-	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM users WHERE role = $1`, role).Scan(&count)
-	return count, err
+	if n == 0 {
+		return domain.ErrUserNotFound
+	}
+	return nil
 }

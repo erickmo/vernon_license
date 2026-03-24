@@ -1,394 +1,257 @@
+//go:build !wasm
+
+// Package main adalah entrypoint untuk Vernon License API server.
+// Server ini menyediakan 2 public endpoints: POST /api/v1/register dan GET /api/v1/validate,
+// serta internal API untuk Vernon App (WASM) dan serving WASM app itu sendiri.
 package main
 
 import (
 	"context"
-	"embed"
 	"fmt"
-	"io/fs"
+	"net"
 	"net/http"
-	"os"
-	"os/signal"
-	"strings"
-	"syscall"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/jmoiron/sqlx"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
+	"github.com/maxence-charriere/go-app/v10/pkg/app"
 	"go.uber.org/fx"
+	"go.uber.org/zap"
 
-	createclientlicense "github.com/flashlab/flasherp-developer-api/internal/command/create_client_license"
-	createproduct "github.com/flashlab/flasherp-developer-api/internal/command/create_product"
-	deleteproduct "github.com/flashlab/flasherp-developer-api/internal/command/delete_product"
-	loginhandler "github.com/flashlab/flasherp-developer-api/internal/command/login"
-	markallread "github.com/flashlab/flasherp-developer-api/internal/command/mark_all_notifications_read"
-	markread "github.com/flashlab/flasherp-developer-api/internal/command/mark_notification_read"
-	provisionlicense "github.com/flashlab/flasherp-developer-api/internal/command/provision_license"
-	registerdevice "github.com/flashlab/flasherp-developer-api/internal/command/register_device"
-	setupinstall "github.com/flashlab/flasherp-developer-api/internal/command/setup_install"
-	unregisterdevice "github.com/flashlab/flasherp-developer-api/internal/command/unregister_device"
-	updatelicenseconstraints "github.com/flashlab/flasherp-developer-api/internal/command/update_license_constraints"
-	updatelicensestatus "github.com/flashlab/flasherp-developer-api/internal/command/update_license_status"
-	updateproduct "github.com/flashlab/flasherp-developer-api/internal/command/update_product"
-	httphandler "github.com/flashlab/flasherp-developer-api/internal/delivery/http"
-	getclientlicense "github.com/flashlab/flasherp-developer-api/internal/query/get_client_license"
-	getdashboard "github.com/flashlab/flasherp-developer-api/internal/query/get_dashboard"
-	getme "github.com/flashlab/flasherp-developer-api/internal/query/get_me"
-	getproduct "github.com/flashlab/flasherp-developer-api/internal/query/get_product"
-	getsetupstatus "github.com/flashlab/flasherp-developer-api/internal/query/get_setup_status"
-	getunreadcount "github.com/flashlab/flasherp-developer-api/internal/query/get_unread_count"
-	listauditlogs "github.com/flashlab/flasherp-developer-api/internal/query/list_audit_logs"
-	listclientlicenses "github.com/flashlab/flasherp-developer-api/internal/query/list_client_licenses"
-	listnotifications "github.com/flashlab/flasherp-developer-api/internal/query/list_notifications"
-	listproducts "github.com/flashlab/flasherp-developer-api/internal/query/list_products"
-	"github.com/flashlab/flasherp-developer-api/infrastructure/config"
-	"github.com/flashlab/flasherp-developer-api/infrastructure/database"
-	"github.com/flashlab/flasherp-developer-api/internal/service"
-	"github.com/flashlab/flasherp-developer-api/pkg/commandbus"
-	jwtpkg "github.com/flashlab/flasherp-developer-api/pkg/jwt"
-	appmiddleware "github.com/flashlab/flasherp-developer-api/pkg/middleware"
-	"github.com/flashlab/flasherp-developer-api/pkg/querybus"
+	"github.com/flashlab/vernon-license/infrastructure/database"
+	"github.com/flashlab/vernon-license/internal/config"
+	"github.com/flashlab/vernon-license/internal/domain"
+	"github.com/flashlab/vernon-license/internal/handler"
+	appmiddleware "github.com/flashlab/vernon-license/internal/middleware"
+	"github.com/flashlab/vernon-license/internal/publicapi"
+	"github.com/flashlab/vernon-license/internal/service"
+	ratelimit "github.com/flashlab/vernon-license/pkg/middleware"
 )
 
-//go:embed web
-var webFiles embed.FS
+func main() {
+	fxApp := fx.New(
+		// Config
+		fx.Provide(provideConfig),
 
-type Handlers struct {
-	fx.In
+		// Logger
+		fx.Provide(provideLogger),
 
-	Auth         *httphandler.AuthHandler
-	License      *httphandler.LicenseHandler
-	Dashboard    *httphandler.DashboardHandler
-	Setup        *httphandler.SetupHandler
-	Product      *httphandler.ProductHandler
-	Audit        *httphandler.AuditHandler
-	Notification *httphandler.NotificationHandler
+		// Database
+		fx.Provide(provideDatabase),
+
+		// Repositories — bind concrete types ke interfaces
+		fx.Provide(
+			fx.Annotate(database.NewLicenseRepo, fx.As(new(domain.LicenseRepository))),
+			fx.Annotate(database.NewProductRepo, fx.As(new(domain.ProductRepository))),
+			fx.Annotate(database.NewAuditRepo, fx.As(new(domain.AuditLogRepository))),
+			fx.Annotate(database.NewUserRepo, fx.As(new(domain.UserRepository))),
+			fx.Annotate(database.NewCompanyRepo, fx.As(new(domain.CompanyRepository))),
+			fx.Annotate(database.NewProjectRepo, fx.As(new(domain.ProjectRepository))),
+			fx.Annotate(database.NewProposalRepo, fx.As(new(domain.ProposalRepository))),
+			fx.Annotate(database.NewNotificationRepo, fx.As(new(domain.NotificationRepository))),
+		),
+
+		// Services
+		service.ServiceModule,
+
+		// Public API handlers
+		publicapi.Module,
+
+		// Internal API handlers
+		handler.Module,
+
+		// HTTP server
+		fx.Provide(provideRouter),
+		fx.Invoke(startServer),
+	)
+
+	fxApp.Run()
 }
 
-type CommandHandlers struct {
-	fx.In
-
-	UpdateStatus      *updatelicensestatus.Handler
-	UpdateConstraints *updatelicenseconstraints.Handler
-	CreateProduct     *createproduct.Handler
-	UpdateProduct     *updateproduct.Handler
-	DeleteProduct     *deleteproduct.Handler
-	MarkRead          *markread.Handler
-	MarkAllRead       *markallread.Handler
-	RegisterDevice    *registerdevice.Handler
-	UnregisterDevice  *unregisterdevice.Handler
+// provideConfig membaca konfigurasi dari environment variables.
+func provideConfig() (*config.Config, error) {
+	return config.Load()
 }
 
-type QueryHandlers struct {
-	fx.In
+// provideLogger membuat Uber Zap logger.
+func provideLogger(cfg *config.Config) (*zap.Logger, error) {
+	var log *zap.Logger
+	var err error
 
-	ListLicenses      *listclientlicenses.Handler
-	GetLicense        *getclientlicense.Handler
-	GetMe             *getme.Handler
-	GetSetupStatus    *getsetupstatus.Handler
-	ListProducts      *listproducts.Handler
-	GetProduct        *getproduct.Handler
-	ListAuditLogs     *listauditlogs.Handler
-	ListNotifications *listnotifications.Handler
-	GetUnreadCount    *getunreadcount.Handler
-	GetDashboard      *getdashboard.Handler
+	if cfg.LogLevel == "debug" {
+		log, err = zap.NewDevelopment()
+	} else {
+		log, err = zap.NewProduction()
+	}
+	if err != nil {
+		return nil, fmt.Errorf("provideLogger: %w", err)
+	}
+	return log, nil
 }
 
-func registerHandlers(
-	cmdBus *commandbus.CommandBus,
-	qBus *querybus.QueryBus,
-	cmdHandlers CommandHandlers,
-	qHandlers QueryHandlers,
-) {
-	// Command handlers
-	cmdBus.Register("update_license_status.UpdateLicenseStatus", cmdHandlers.UpdateStatus)
-	cmdBus.Register("update_license_constraints.UpdateLicenseConstraints", cmdHandlers.UpdateConstraints)
-	cmdBus.Register("create_product.CreateProduct", cmdHandlers.CreateProduct)
-	cmdBus.Register("update_product.UpdateProduct", cmdHandlers.UpdateProduct)
-	cmdBus.Register("delete_product.DeleteProduct", cmdHandlers.DeleteProduct)
-	cmdBus.Register("mark_notification_read.MarkNotificationRead", cmdHandlers.MarkRead)
-	cmdBus.Register("mark_all_notifications_read.MarkAllNotificationsRead", cmdHandlers.MarkAllRead)
-	cmdBus.Register("register_device.RegisterDevice", cmdHandlers.RegisterDevice)
-	cmdBus.Register("unregister_device.UnregisterDevice", cmdHandlers.UnregisterDevice)
-
-	// Query handlers
-	qBus.Register("list_client_licenses.ListClientLicenses", qHandlers.ListLicenses)
-	qBus.Register("get_client_license.GetClientLicense", qHandlers.GetLicense)
-	qBus.Register("get_me.GetMe", qHandlers.GetMe)
-	qBus.Register("get_setup_status.GetSetupStatus", qHandlers.GetSetupStatus)
-	qBus.Register("list_products.ListProducts", qHandlers.ListProducts)
-	qBus.Register("get_product.GetProduct", qHandlers.GetProduct)
-	qBus.Register("list_audit_logs.ListAuditLogs", qHandlers.ListAuditLogs)
-	qBus.Register("list_notifications.ListNotifications", qHandlers.ListNotifications)
-	qBus.Register("get_unread_count.GetUnreadCount", qHandlers.GetUnreadCount)
-	qBus.Register("get_dashboard.GetDashboard", qHandlers.GetDashboard)
-}
-
-func startServer(lc fx.Lifecycle, cfg *config.Config, jwtService *jwtpkg.Service, handlers Handlers) {
-	logger := zerolog.New(os.Stdout).With().Timestamp().Logger()
-	log.Logger = logger
-
-	r := chi.NewRouter()
-	r.Use(chimiddleware.RequestID)
-	r.Use(appmiddleware.CORS())
-	r.Use(appmiddleware.Logger(logger))
-	r.Use(appmiddleware.Recoverer())
-
-	// Public routes
-	r.Get("/api/v1/setup/status", handlers.Setup.Status)
-	r.Post("/api/v1/setup/install", handlers.Setup.Install)
-	r.Post("/api/v1/auth/login", handlers.Auth.Login)
-	r.Get("/api/v1/client/license", handlers.License.GetClientLicense)
-
-	// Protected routes
-	r.Group(func(r chi.Router) {
-		r.Use(appmiddleware.RequireAuth(jwtService))
-
-		r.Get("/api/v1/auth/me", handlers.Auth.Me)
-
-		// Dashboard
-		r.Get("/api/v1/dashboard", handlers.Dashboard.Dashboard)
-
-		// License routes — sales dan superuser
-		r.Group(func(r chi.Router) {
-			r.Use(appmiddleware.RequireRole("sales", "developer_sales", "project_owner", "superuser"))
-			r.Get("/api/v1/licenses", handlers.License.List)
-			r.Post("/api/v1/licenses", handlers.License.Create)
-			r.Get("/api/v1/licenses/{id}", handlers.License.Get)
-			r.Put("/api/v1/licenses/{id}/status", handlers.License.UpdateStatus)
-			r.Put("/api/v1/licenses/{id}/constraints", handlers.License.UpdateConstraints)
-			r.Post("/api/v1/licenses/{id}/provision", handlers.License.Provision)
-			r.Get("/api/v1/licenses/{id}/audit", handlers.Audit.GetLicenseAudit)
-		})
-
-		// Product routes — read: semua role, write: project_owner/superuser
-		r.Group(func(r chi.Router) {
-			r.Use(appmiddleware.RequireRole("sales", "developer_sales", "project_owner", "superuser"))
-			r.Get("/api/v1/products", handlers.Product.List)
-			r.Get("/api/v1/products/{id}", handlers.Product.Get)
-		})
-		r.Group(func(r chi.Router) {
-			r.Use(appmiddleware.RequireRole("project_owner", "superuser"))
-			r.Post("/api/v1/products", handlers.Product.Create)
-			r.Put("/api/v1/products/{id}", handlers.Product.Update)
-			r.Delete("/api/v1/products/{id}", handlers.Product.Delete)
-		})
-
-		// Global audit — superuser only
-		r.Group(func(r chi.Router) {
-			r.Use(appmiddleware.RequireRole("superuser"))
-			r.Get("/api/v1/audit", handlers.Audit.GetAllAudit)
-		})
-
-		// Notification routes — semua authenticated user
-		r.Get("/api/v1/notifications", handlers.Notification.ListNotifications)
-		r.Put("/api/v1/notifications/{id}/read", handlers.Notification.MarkRead)
-		r.Put("/api/v1/notifications/read-all", handlers.Notification.MarkAllRead)
-		r.Get("/api/v1/notifications/unread-count", handlers.Notification.GetUnreadCount)
-		r.Post("/api/v1/devices", handlers.Notification.RegisterDevice)
-		r.Delete("/api/v1/devices/{token}", handlers.Notification.UnregisterDevice)
-	})
-
-	// Serve PWA static files — must be after API routes
-	webFS, err := fs.Sub(webFiles, "web")
-	if err == nil {
-		fileServer := http.FileServer(http.FS(webFS))
-		// Chi requires explicit GET registration for FileServer to work correctly
-		r.Get("/", fileServer.ServeHTTP)
-		r.Get("/*", func(w http.ResponseWriter, r *http.Request) {
-			rctx := chi.RouteContext(r.Context())
-			pathPrefix := strings.TrimSuffix(rctx.RoutePattern(), "/*")
-			http.StripPrefix(pathPrefix, fileServer).ServeHTTP(w, r)
-		})
+// provideDatabase membuka koneksi ke PostgreSQL.
+func provideDatabase(cfg *config.Config, lc fx.Lifecycle) (*sqlx.DB, error) {
+	db, err := database.New(cfg.DatabaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("provideDatabase: %w", err)
 	}
 
-	srv := &http.Server{
-		Addr:         fmt.Sprintf(":%s", cfg.HTTPPort),
-		Handler:      r,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
+	lc.Append(fx.Hook{
+		OnStop: func(_ context.Context) error {
+			return db.Close()
+		},
+	})
+
+	return db, nil
+}
+
+// provideRouter membuat Chi router dengan semua routes terdaftar:
+// public API, internal API, dan Vernon App WASM handler.
+func provideRouter(
+	registerHandler *publicapi.RegisterHandler,
+	validateHandler *publicapi.ValidateHandler,
+	authHandler *handler.AuthHandler,
+	setupHandler *handler.SetupHandler,
+	companyHandler *handler.CompanyHandler,
+	projectHandler *handler.ProjectHandler,
+	licenseHandler *handler.LicenseHandler,
+	proposalHandler *handler.ProposalHandler,
+	productHandler *handler.ProductHandler,
+	userHandler *handler.UserHandler,
+	notifHandler *handler.NotificationHandler,
+	dashboardHandler *handler.DashboardHandler,
+	cfg *config.Config,
+	log *zap.Logger,
+) *chi.Mux {
+	r := chi.NewRouter()
+
+	// Global middleware
+	r.Use(chimiddleware.RequestID)
+	r.Use(chimiddleware.RealIP)
+	r.Use(chimiddleware.Recoverer)
+
+	// Public API routes dengan rate limiting 60 req/min per IP
+	r.Group(func(r chi.Router) {
+		r.Use(ratelimit.NewRateLimiter(60))
+		r.Post("/api/v1/register", registerHandler.Handle)
+		r.Get("/api/v1/validate", validateHandler.Handle)
+	})
+
+	// Internal API — no auth required
+	r.Post("/api/internal/setup/install", setupHandler.Install)
+	r.Get("/api/internal/setup/status", setupHandler.GetStatus)
+	r.Post("/api/internal/auth/login", authHandler.Login)
+
+	// Internal API — JWT auth required
+	r.Group(func(r chi.Router) {
+		r.Use(appmiddleware.AuthMiddleware(cfg.JWTSecret))
+		r.Get("/api/internal/auth/me", authHandler.GetMe)
+
+		// Companies
+		r.Get("/api/internal/companies", companyHandler.List)
+		r.Post("/api/internal/companies", companyHandler.Create)
+		r.Get("/api/internal/companies/{id}", companyHandler.GetByID)
+		r.Put("/api/internal/companies/{id}", companyHandler.Update)
+		r.Delete("/api/internal/companies/{id}", companyHandler.Delete)
+
+		// Projects (nested under company + standalone)
+		r.Get("/api/internal/companies/{companyID}/projects", projectHandler.ListByCompany)
+		r.Post("/api/internal/companies/{companyID}/projects", projectHandler.Create)
+		r.Get("/api/internal/projects/{id}", projectHandler.GetByID)
+		r.Put("/api/internal/projects/{id}", projectHandler.Update)
+		r.Delete("/api/internal/projects/{id}", projectHandler.Delete)
+
+		// Licenses
+		r.Get("/api/internal/licenses", licenseHandler.List)
+		r.Post("/api/internal/licenses", licenseHandler.Create)
+		r.Get("/api/internal/licenses/{id}", licenseHandler.GetByID)
+		r.Put("/api/internal/licenses/{id}/activate", licenseHandler.Activate)
+		r.Put("/api/internal/licenses/{id}/suspend", licenseHandler.Suspend)
+		r.Put("/api/internal/licenses/{id}/renew", licenseHandler.Renew)
+		r.Put("/api/internal/licenses/{id}/constraints", licenseHandler.UpdateConstraints)
+		r.Get("/api/internal/licenses/{id}/audit", licenseHandler.GetAuditLogs)
+		r.Get("/api/internal/projects/{projectID}/licenses", licenseHandler.ListByProject)
+
+		// Proposals
+		r.Get("/api/internal/proposals", proposalHandler.List)
+		r.Post("/api/internal/proposals", proposalHandler.Create)
+		r.Get("/api/internal/proposals/{id}", proposalHandler.GetByID)
+		r.Put("/api/internal/proposals/{id}", proposalHandler.Update)
+		r.Put("/api/internal/proposals/{id}/submit", proposalHandler.Submit)
+		r.Put("/api/internal/proposals/{id}/approve", proposalHandler.Approve)
+		r.Put("/api/internal/proposals/{id}/reject", proposalHandler.Reject)
+		r.Get("/api/internal/proposals/{id}/pdf", proposalHandler.GetPDF)
+		r.Get("/api/internal/projects/{projectID}/proposals", proposalHandler.ListByProject)
+
+		// Dashboard
+		r.Get("/api/internal/dashboard", dashboardHandler.GetStats)
+
+		// Products
+		r.Get("/api/internal/products", productHandler.List)
+		r.Post("/api/internal/products", productHandler.Create)
+		r.Get("/api/internal/products/{id}", productHandler.GetByID)
+		r.Put("/api/internal/products/{id}", productHandler.Update)
+		r.Delete("/api/internal/products/{id}", productHandler.Delete)
+
+		// Users
+		r.Get("/api/internal/users", userHandler.List)
+		r.Post("/api/internal/users", userHandler.Create)
+		r.Put("/api/internal/users/{id}/active", userHandler.SetActive)
+
+		// Notifications
+		r.Get("/api/internal/notifications", notifHandler.List)
+		r.Get("/api/internal/notifications/unread-count", notifHandler.CountUnread)
+		r.Put("/api/internal/notifications/{id}/read", notifHandler.MarkRead)
+		r.Put("/api/internal/notifications/read-all", notifHandler.MarkAllRead)
+	})
+
+	// Serve static web assets (CSS, icons, manifest)
+	r.Handle("/web/*", http.StripPrefix("/web/", http.FileServer(http.Dir("web"))))
+	r.Handle("/manifest.json", http.FileServer(http.Dir("web")))
+
+	// Vernon App WASM — serve untuk semua non-API routes
+	wasmHandler := &app.Handler{
+		Name:            "Vernon License",
+		Description:     "License Management System",
+		Author:          "FlashLab",
+		ThemeColor:      "#4D2975",
+		BackgroundColor: "#0F0A1A",
+		LoadingLabel:    "Loading Vernon...",
+		Styles:          []string{"/web/app.css"},
+	}
+	r.Handle("/*", wasmHandler)
+
+	log.Info("Router configured",
+		zap.String("public_api", "/api/v1/{register,validate}"),
+		zap.String("internal_api", "/api/internal/*"),
+		zap.String("app", "/* (WASM)"),
+	)
+	return r
+}
+
+// startServer mendaftarkan lifecycle hook untuk start/stop HTTP server.
+func startServer(lc fx.Lifecycle, r *chi.Mux, cfg *config.Config, log *zap.Logger) {
+	server := &http.Server{
+		Handler: r,
 	}
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
+			ln, err := net.Listen("tcp", ":"+cfg.Port)
+			if err != nil {
+				return fmt.Errorf("startServer: listen: %w", err)
+			}
+			log.Info("Starting Vernon License API", zap.String("port", cfg.Port))
 			go func() {
-				logger.Info().Str("port", cfg.HTTPPort).Msg("server dimulai")
-				if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-					logger.Fatal().Err(err).Msg("server error")
+				if err := server.Serve(ln); err != nil && err != http.ErrServerClosed {
+					log.Error("server error", zap.Error(err))
 				}
 			}()
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
-			logger.Info().Msg("server dihentikan")
-			shutdownCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-			defer cancel()
-			return srv.Shutdown(shutdownCtx)
+			log.Info("Shutting down server")
+			return server.Shutdown(ctx)
 		},
 	})
-}
-
-func main() {
-	// Pre-flight: jika .env tidak ada atau DB tidak bisa dikoneksi, jalankan setup wizard
-	if needsSetup() {
-		runSetupServer("8081")
-		return
-	}
-
-	// Handle sinyal OS untuk graceful shutdown
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-
-	app := fx.New(
-		fx.Provide(
-			config.Load,
-			// DB
-			func(cfg *config.Config) (*sqlx.DB, error) {
-				return database.NewPostgres(cfg.DatabaseURL)
-			},
-			// JWT
-			func(cfg *config.Config) *jwtpkg.Service {
-				return jwtpkg.NewService(cfg.JWTSecret, cfg.JWTExpHours)
-			},
-			// Buses
-			commandbus.New,
-			querybus.New,
-			// Repositories
-			func(db *sqlx.DB) *database.UserRepository {
-				return database.NewUserRepository(db)
-			},
-			func(db *sqlx.DB) *database.ClientLicenseRepository {
-				return database.NewClientLicenseRepository(db)
-			},
-			func(db *sqlx.DB) *database.ProductRepository {
-				return database.NewProductRepository(db)
-			},
-			func(db *sqlx.DB) *database.AuditRepository {
-				return database.NewAuditRepository(db)
-			},
-			func(db *sqlx.DB) *database.NotificationRepository {
-				return database.NewNotificationRepository(db)
-			},
-			// Command handlers — license
-			func(repo *database.UserRepository, jwt *jwtpkg.Service) *loginhandler.Handler {
-				return loginhandler.NewHandler(repo, jwt)
-			},
-			func(repo *database.ClientLicenseRepository, cfg *config.Config) *createclientlicense.Handler {
-				return createclientlicense.NewHandler(repo, cfg)
-			},
-			func(repo *database.ClientLicenseRepository, auditRepo *database.AuditRepository) *updatelicensestatus.Handler {
-				return updatelicensestatus.NewHandler(repo, auditRepo)
-			},
-			func(repo *database.ClientLicenseRepository, auditRepo *database.AuditRepository) *updatelicenseconstraints.Handler {
-				return updatelicenseconstraints.NewHandler(repo, auditRepo)
-			},
-			func(repo *database.ClientLicenseRepository, auditRepo *database.AuditRepository) *provisionlicense.Handler {
-				return provisionlicense.NewHandler(repo, auditRepo)
-			},
-			// Command handlers — product
-			func(repo *database.ProductRepository, auditRepo *database.AuditRepository) *createproduct.Handler {
-				return createproduct.NewHandler(repo, auditRepo)
-			},
-			func(readRepo *database.ProductRepository, writeRepo *database.ProductRepository, auditRepo *database.AuditRepository) *updateproduct.Handler {
-				return updateproduct.NewHandler(readRepo, writeRepo, auditRepo)
-			},
-			func(repo *database.ProductRepository) *deleteproduct.Handler {
-				return deleteproduct.NewHandler(repo)
-			},
-			// Command handlers — notification
-			func(repo *database.NotificationRepository) *markread.Handler {
-				return markread.NewHandler(repo)
-			},
-			func(repo *database.NotificationRepository) *markallread.Handler {
-				return markallread.NewHandler(repo)
-			},
-			func(repo *database.NotificationRepository) *registerdevice.Handler {
-				return registerdevice.NewHandler(repo)
-			},
-			func(repo *database.NotificationRepository) *unregisterdevice.Handler {
-				return unregisterdevice.NewHandler(repo)
-			},
-			// Query handlers
-			func(repo *database.ClientLicenseRepository) *listclientlicenses.Handler {
-				return listclientlicenses.NewHandler(repo)
-			},
-			func(repo *database.ClientLicenseRepository) *getclientlicense.Handler {
-				return getclientlicense.NewHandler(repo)
-			},
-			func(repo *database.UserRepository) *getme.Handler {
-				return getme.NewHandler(repo)
-			},
-			func(repo *database.UserRepository) *getsetupstatus.Handler {
-				return getsetupstatus.NewHandler(repo)
-			},
-			func(writeRepo *database.UserRepository, readRepo *database.UserRepository) *setupinstall.Handler {
-				return setupinstall.NewHandler(writeRepo, readRepo)
-			},
-			// Query handlers — product
-			func(repo *database.ProductRepository) *listproducts.Handler {
-				return listproducts.NewHandler(repo)
-			},
-			func(repo *database.ProductRepository) *getproduct.Handler {
-				return getproduct.NewHandler(repo)
-			},
-			// Query handlers — audit
-			func(repo *database.AuditRepository) *listauditlogs.Handler {
-				return listauditlogs.NewHandler(repo)
-			},
-			// Query handlers — notification
-			func(repo *database.NotificationRepository) *listnotifications.Handler {
-				return listnotifications.NewHandler(repo)
-			},
-			func(repo *database.NotificationRepository) *getunreadcount.Handler {
-				return getunreadcount.NewHandler(repo)
-			},
-			// Query handlers — dashboard
-			func(db *sqlx.DB) *getdashboard.Handler {
-				return getdashboard.NewHandler(db)
-			},
-			// Services
-			func(db *sqlx.DB, repo *database.NotificationRepository) *service.NotificationService {
-				return service.NewNotificationService(db, repo)
-			},
-			// HTTP handlers
-			httphandler.NewAuthHandler,
-			httphandler.NewLicenseHandler,
-			httphandler.NewDashboardHandler,
-			httphandler.NewSetupHandler,
-			httphandler.NewProductHandler,
-			httphandler.NewAuditHandler,
-			httphandler.NewNotificationHandler,
-		),
-		fx.Invoke(
-			registerHandlers,
-			startServer,
-			func(lc fx.Lifecycle, svc *service.NotificationService) {
-				ctx, cancel := context.WithCancel(context.Background())
-				lc.Append(fx.Hook{
-					OnStart: func(_ context.Context) error {
-						svc.StartExpiryChecker(ctx)
-						return nil
-					},
-					OnStop: func(_ context.Context) error {
-						cancel()
-						return nil
-					},
-				})
-			},
-		),
-	)
-
-	go func() {
-		<-quit
-		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-		defer cancel()
-		if err := app.Stop(ctx); err != nil {
-			log.Fatal().Err(err).Msg("gagal stop app")
-		}
-	}()
-
-	app.Run()
 }
