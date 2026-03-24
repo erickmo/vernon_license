@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -193,7 +194,14 @@ func startServer(lc fx.Lifecycle, cfg *config.Config, jwtService *jwtpkg.Service
 	// Serve PWA static files — must be after API routes
 	webFS, err := fs.Sub(webFiles, "web")
 	if err == nil {
-		r.Handle("/*", http.FileServer(http.FS(webFS)))
+		fileServer := http.FileServer(http.FS(webFS))
+		// Chi requires explicit GET registration for FileServer to work correctly
+		r.Get("/", fileServer.ServeHTTP)
+		r.Get("/*", func(w http.ResponseWriter, r *http.Request) {
+			rctx := chi.RouteContext(r.Context())
+			pathPrefix := strings.TrimSuffix(rctx.RoutePattern(), "/*")
+			http.StripPrefix(pathPrefix, fileServer).ServeHTTP(w, r)
+		})
 	}
 
 	srv := &http.Server{
