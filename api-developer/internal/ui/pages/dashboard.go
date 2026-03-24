@@ -163,6 +163,7 @@ func (p *DashboardPage) renderContent() app.UI {
 						Body(
 							p.renderSummaryCards(),
 							p.renderChartsRow(),
+						p.renderAPIInfo(),
 							p.renderExpiringTable(),
 							p.renderActivityFeed(),
 						)
@@ -519,6 +520,82 @@ func (p *DashboardPage) renderExpiringTable() app.UI {
 								),
 							app.TBody().Body(rows...),
 						),
+				),
+		)
+}
+
+// renderAPIInfo merender card informasi public API endpoints.
+func (p *DashboardPage) renderAPIInfo() app.UI {
+	return app.Div().
+		Style("background", "#1A1035").
+		Style("border", "1px solid rgba(77,41,117,0.3)").
+		Style("border-radius", "12px").
+		Style("padding", "20px").
+		Style("margin-bottom", "28px").
+		Body(
+			app.Div().
+				Style("color", "#E2D9F3").
+				Style("font-size", "15px").
+				Style("font-weight", "600").
+				Style("margin-bottom", "16px").
+				Text("Public API Endpoints"),
+			app.Div().
+				Style("display", "flex").
+				Style("flex-direction", "column").
+				Style("gap", "10px").
+				Body(
+					renderAPIEndpoint("POST", "/api/v1/register", "Client app mendaftarkan diri → mendapatkan license key"),
+					renderAPIEndpoint("GET", "/api/v1/validate", "Client app memvalidasi lisensi → returns { valid: true/false }"),
+				),
+			app.Div().
+				Style("margin-top", "12px").
+				Style("padding", "10px 12px").
+				Style("background", "rgba(77,41,117,0.1)").
+				Style("border-radius", "6px").
+				Style("color", "#9B8DB5").
+				Style("font-size", "12px").
+				Text("Rate limit: 60 req/min per IP · Auth: provision_api_key (register) · license_key (validate)"),
+		)
+}
+
+// renderAPIEndpoint merender satu baris endpoint.
+func renderAPIEndpoint(method, path, desc string) app.UI {
+	methodColor := "#26B8B0"
+	methodBg := "rgba(38,184,176,0.15)"
+	if method == "POST" {
+		methodColor = "#E9A800"
+		methodBg = "rgba(233,168,0,0.15)"
+	}
+	return app.Div().
+		Style("display", "flex").
+		Style("align-items", "flex-start").
+		Style("gap", "12px").
+		Body(
+			app.Span().
+				Style("display", "inline-block").
+				Style("background", methodBg).
+				Style("color", methodColor).
+				Style("font-size", "11px").
+				Style("font-weight", "700").
+				Style("padding", "2px 8px").
+				Style("border-radius", "4px").
+				Style("font-family", "monospace").
+				Style("flex-shrink", "0").
+				Style("margin-top", "1px").
+				Text(method),
+			app.Div().
+				Body(
+					app.Div().
+						Style("color", "#E2D9F3").
+						Style("font-size", "13px").
+						Style("font-family", "monospace").
+						Style("font-weight", "500").
+						Text(path),
+					app.Div().
+						Style("color", "#9B8DB5").
+						Style("font-size", "12px").
+						Style("margin-top", "2px").
+						Text(desc),
 				),
 		)
 }

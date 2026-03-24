@@ -83,6 +83,7 @@ const proposalHTMLTemplate = `<!DOCTYPE html>
     --gray-900: #111827;
     --gray-700: #374151;
     --gray-500: #6B7280;
+    --gray-400: #9CA3AF;
     --gray-300: #D1D5DB;
     --gray-200: #E5E7EB;
     --gray-100: #F3F4F6;
@@ -105,8 +106,8 @@ const proposalHTMLTemplate = `<!DOCTYPE html>
     flex-direction: column;
   }
   .accent-bar {
-    height: 8px;
-    background: linear-gradient(90deg, var(--primary) 0%, var(--accent) 50%, var(--amber) 100%);
+    height: 4px;
+    background: var(--gray-300);
     flex-shrink: 0;
   }
   .header {
@@ -118,9 +119,9 @@ const proposalHTMLTemplate = `<!DOCTYPE html>
   }
   .vendor-block { }
   .vendor-name {
-    font-size: 22px;
+    font-size: 18px;
     font-weight: 700;
-    color: var(--primary);
+    color: var(--gray-900);
     letter-spacing: -0.5px;
   }
   .vendor-detail {
@@ -138,9 +139,9 @@ const proposalHTMLTemplate = `<!DOCTYPE html>
     letter-spacing: 1px;
   }
   .doc-title {
-    font-size: 18px;
+    font-size: 15px;
     font-weight: 700;
-    color: var(--primary);
+    color: var(--gray-700);
     margin-top: 4px;
   }
   .doc-id {
@@ -162,14 +163,14 @@ const proposalHTMLTemplate = `<!DOCTYPE html>
     margin-bottom: 32px;
   }
   .section-title {
-    font-size: 13px;
+    font-size: 11px;
     font-weight: 700;
-    color: var(--primary);
+    color: var(--gray-700);
     text-transform: uppercase;
     letter-spacing: 1px;
     margin-bottom: 12px;
     padding-bottom: 8px;
-    border-bottom: 2px solid var(--primary);
+    border-bottom: 2px solid var(--gray-300);
     display: inline-block;
   }
   table.info-table {
@@ -177,8 +178,8 @@ const proposalHTMLTemplate = `<!DOCTYPE html>
     border-collapse: collapse;
   }
   table.info-table tr td {
-    padding: 10px 12px;
-    font-size: 13px;
+    padding: 8px 12px;
+    font-size: 12px;
     border-bottom: 1px solid var(--gray-100);
   }
   table.info-table tr td:first-child {
@@ -212,9 +213,9 @@ const proposalHTMLTemplate = `<!DOCTYPE html>
     margin-bottom: 6px;
   }
   .info-card .card-value {
-    font-size: 20px;
+    font-size: 16px;
     font-weight: 700;
-    color: var(--primary);
+    color: var(--gray-900);
   }
   .info-card .card-sub {
     font-size: 12px;
@@ -224,20 +225,20 @@ const proposalHTMLTemplate = `<!DOCTYPE html>
   .notes-box {
     background: var(--gray-100);
     border-radius: 8px;
-    padding: 16px 20px;
-    font-size: 13px;
+    padding: 14px 18px;
+    font-size: 12px;
     color: var(--gray-700);
     line-height: 1.6;
-    border-left: 3px solid var(--accent);
+    border-left: 3px solid var(--gray-400);
   }
   .owner-notes-box {
-    background: #F5F0FF;
+    background: var(--gray-100);
     border-radius: 8px;
-    padding: 16px 20px;
-    font-size: 13px;
+    padding: 14px 18px;
+    font-size: 12px;
     color: var(--gray-700);
     line-height: 1.6;
-    border-left: 3px solid var(--primary);
+    border-left: 3px solid var(--gray-500);
   }
   .changelog-box {
     background: #FFF8E1;
@@ -266,11 +267,11 @@ const proposalHTMLTemplate = `<!DOCTYPE html>
   .changelog-new { color: var(--success); }
   .tag {
     display: inline-block;
-    background: #EDE9F8;
-    color: var(--primary);
-    padding: 3px 10px;
+    background: var(--gray-200);
+    color: var(--gray-700);
+    padding: 2px 8px;
     border-radius: 100px;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     margin: 2px;
   }
@@ -322,8 +323,8 @@ const proposalHTMLTemplate = `<!DOCTYPE html>
     color: var(--gray-400);
   }
   .bottom-bar {
-    height: 4px;
-    background: linear-gradient(90deg, var(--primary) 0%, var(--accent) 50%, var(--amber) 100%);
+    height: 2px;
+    background: var(--gray-200);
     flex-shrink: 0;
   }
 </style>

@@ -145,7 +145,7 @@ func (h *DashboardHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Expiring licenses dalam 30 hari
+	// Expiring licenses dalam 30 hari — non-fatal, skip jika query gagal.
 	const expiringQ = `
 		SELECT
 			cl.id::text,
@@ -163,56 +163,50 @@ func (h *DashboardHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 		ORDER BY cl.expires_at ASC
 		LIMIT 10`
 
-	rows, err := h.db.QueryxContext(ctx, expiringQ)
-	if err != nil {
-		h.logger.Error("DashboardHandler.GetStats: expiring", zap.Error(err))
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Internal server error")
-		return
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var row expiringLicenseRow
-		if err := rows.StructScan(&row); err != nil {
-			h.logger.Error("DashboardHandler.GetStats: scan expiring row", zap.Error(err))
-			continue
+	if rows, qErr := h.db.QueryxContext(ctx, expiringQ); qErr != nil {
+		h.logger.Warn("DashboardHandler.GetStats: expiring query skipped", zap.Error(qErr))
+	} else {
+		defer rows.Close()
+		for rows.Next() {
+			var row expiringLicenseRow
+			if err := rows.StructScan(&row); err != nil {
+				h.logger.Error("DashboardHandler.GetStats: scan expiring row", zap.Error(err))
+				continue
+			}
+			stats.ExpiringLicenses = append(stats.ExpiringLicenses, ExpiringLicense{
+				ID:         row.ID,
+				LicenseKey: row.LicenseKey,
+				Company:    row.Company,
+				ExpiresAt:  row.ExpiresAt.Format("2006-01-02"),
+				DaysLeft:   row.DaysLeft,
+			})
 		}
-		stats.ExpiringLicenses = append(stats.ExpiringLicenses, ExpiringLicense{
-			ID:         row.ID,
-			LicenseKey: row.LicenseKey,
-			Company:    row.Company,
-			ExpiresAt:  row.ExpiresAt.Format("2006-01-02"),
-			DaysLeft:   row.DaysLeft,
-		})
 	}
 
-	// Recent activity — 10 audit logs terbaru
+	// Recent activity — 10 audit logs terbaru, non-fatal.
 	const activityQ = `
 		SELECT entity_type, action, actor_name, created_at
 		FROM audit_logs
 		ORDER BY created_at DESC
 		LIMIT 10`
 
-	actRows, err := h.db.QueryxContext(ctx, activityQ)
-	if err != nil {
-		h.logger.Error("DashboardHandler.GetStats: activity", zap.Error(err))
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Internal server error")
-		return
-	}
-	defer actRows.Close()
-
-	for actRows.Next() {
-		var row activityItemRow
-		if err := actRows.StructScan(&row); err != nil {
-			h.logger.Error("DashboardHandler.GetStats: scan activity row", zap.Error(err))
-			continue
+	if actRows, qErr := h.db.QueryxContext(ctx, activityQ); qErr != nil {
+		h.logger.Warn("DashboardHandler.GetStats: activity query skipped", zap.Error(qErr))
+	} else {
+		defer actRows.Close()
+		for actRows.Next() {
+			var row activityItemRow
+			if err := actRows.StructScan(&row); err != nil {
+				h.logger.Error("DashboardHandler.GetStats: scan activity row", zap.Error(err))
+				continue
+			}
+			stats.RecentActivity = append(stats.RecentActivity, ActivityItem{
+				EntityType: row.EntityType,
+				Action:     row.Action,
+				ActorName:  row.ActorName,
+				CreatedAt:  row.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			})
 		}
-		stats.RecentActivity = append(stats.RecentActivity, ActivityItem{
-			EntityType: row.EntityType,
-			Action:     row.Action,
-			ActorName:  row.ActorName,
-			CreatedAt:  row.CreatedAt.Format("2006-01-02T15:04:05Z"),
-		})
 	}
 
 	writeJSON(w, http.StatusOK, stats)

@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/flashlab/vernon-license/internal/ui/api"
+	"github.com/flashlab/vernon-license/internal/ui/components"
 	"github.com/flashlab/vernon-license/internal/ui/store"
 	"github.com/maxence-charriere/go-app/v10/pkg/app"
 )
@@ -88,8 +89,22 @@ func (p *ProposalsListPage) onFilterChange(status string) func(app.Context, app.
 	}
 }
 
-// Render menampilkan halaman daftar proposals.
+// Render menampilkan halaman daftar proposals dengan shell.
 func (p *ProposalsListPage) Render() app.UI {
+	if !p.authStore.IsLoggedIn() {
+		return app.Div()
+	}
+
+	return app.Elem("x-shell").
+		Body(
+			&components.Shell{
+				Content: p.renderContent(),
+			},
+		)
+}
+
+// renderContent merender area konten proposals list.
+func (p *ProposalsListPage) renderContent() app.UI {
 	return app.Div().
 		Style("padding", "32px").
 		Style("max-width", "960px").

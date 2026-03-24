@@ -34,7 +34,7 @@ type LoginPage struct {
 // Redirect ke / jika sudah login, atau ke /setup jika belum ada user.
 func (p *LoginPage) OnNav(ctx app.Context) {
 	if p.authStore.IsLoggedIn() {
-		app.Navigate("/")
+		ctx.Navigate("/")
 		return
 	}
 	// Cek apakah setup sudah dilakukan
@@ -45,7 +45,7 @@ func (p *LoginPage) OnNav(ctx app.Context) {
 		}
 		if err := client.Get(ctx, "/api/internal/setup/status", &resp); err == nil && !resp.IsSetup {
 			ctx.Dispatch(func(ctx app.Context) {
-				app.Navigate("/setup")
+				ctx.Navigate("/setup")
 			})
 		}
 	})

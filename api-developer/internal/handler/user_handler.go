@@ -175,6 +175,22 @@ func (h *UserHandler) SetActive(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Cegah deaktivasi superuser — cek role target user terlebih dahulu.
+	targetUser, err := h.svc.GetByID(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, domain.ErrUserNotFound) {
+			writeError(w, http.StatusNotFound, "USER_NOT_FOUND", "User tidak ditemukan")
+			return
+		}
+		h.logger.Error("UserHandler.SetActive: get target user", zap.Error(err))
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Internal server error")
+		return
+	}
+	if targetUser.Role == "superuser" {
+		writeError(w, http.StatusForbidden, "FORBIDDEN", "Status superuser tidak dapat diubah")
+		return
+	}
+
 	if err := h.svc.SetActive(r.Context(), id, req.IsActive, actorID, claims.Name); err != nil {
 		if errors.Is(err, domain.ErrUserNotFound) {
 			writeError(w, http.StatusNotFound, "USER_NOT_FOUND", "User tidak ditemukan")

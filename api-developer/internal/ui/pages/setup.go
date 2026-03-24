@@ -33,7 +33,7 @@ func (p *SetupPage) OnNav(ctx app.Context) {
 		}
 		if err := client.Get(ctx, "/api/internal/setup/status", &resp); err == nil && resp.IsSetup {
 			ctx.Dispatch(func(ctx app.Context) {
-				app.Navigate("/login")
+				ctx.Navigate("/login")
 			})
 		}
 	})
@@ -242,7 +242,7 @@ func (p *SetupPage) onSubmit(ctx app.Context, e app.Event) {
 				Role:  resp.User.Role,
 				Token: resp.Token,
 			})
-			app.Navigate("/")
+			ctx.Navigate("/")
 		})
 	})
 }

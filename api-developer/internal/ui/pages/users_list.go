@@ -287,19 +287,44 @@ func (p *UsersListPage) renderTable() app.UI {
 			statusText = "Inactive"
 		}
 
-		// Toggle button
-		toggleLabel := "Deactivate"
-		toggleBg := "rgba(239,68,68,0.15)"
-		toggleColor := "#EF4444"
-		toggleBorder := "rgba(239,68,68,0.3)"
-		if !user.IsActive {
-			toggleLabel = "Activate"
-			toggleBg = "rgba(34,197,94,0.15)"
-			toggleColor = "#22C55E"
-			toggleBorder = "rgba(34,197,94,0.3)"
-		}
-		if p.toggling == user.ID {
-			toggleLabel = "..."
+		// Toggle button — superuser tidak bisa di-deactivate.
+		var toggleUI app.UI
+		if user.Role == "superuser" {
+			toggleUI = app.Span().
+				Style("color", "#9B8DB5").
+				Style("font-size", "12px").
+				Style("font-style", "italic").
+				Text("—")
+		} else {
+			toggleLabel := "Deactivate"
+			toggleBg := "rgba(239,68,68,0.15)"
+			toggleColor := "#EF4444"
+			toggleBorder := "rgba(239,68,68,0.3)"
+			if !user.IsActive {
+				toggleLabel = "Activate"
+				toggleBg = "rgba(34,197,94,0.15)"
+				toggleColor = "#22C55E"
+				toggleBorder = "rgba(34,197,94,0.3)"
+			}
+			if p.toggling == user.ID {
+				toggleLabel = "..."
+			}
+			toggleUI = app.Button().
+				Disabled(p.toggling == user.ID).
+				Style("background", toggleBg).
+				Style("color", toggleColor).
+				Style("border", "1px solid "+toggleBorder).
+				Style("border-radius", "6px").
+				Style("padding", "5px 12px").
+				Style("font-size", "12px").
+				Style("cursor", func() string {
+					if p.toggling == user.ID {
+						return "not-allowed"
+					}
+					return "pointer"
+				}()).
+				OnClick(p.onToggleActive(user.ID, user.IsActive)).
+				Text(toggleLabel)
 		}
 
 		rows = append(rows, app.Tr().
@@ -331,24 +356,7 @@ func (p *UsersListPage) renderTable() app.UI {
 						Style("font-weight", "600").
 						Text(statusText),
 				),
-				app.Td().Style("padding", "12px 16px").Body(
-					app.Button().
-						Disabled(p.toggling == user.ID).
-						Style("background", toggleBg).
-						Style("color", toggleColor).
-						Style("border", "1px solid "+toggleBorder).
-						Style("border-radius", "6px").
-						Style("padding", "5px 12px").
-						Style("font-size", "12px").
-						Style("cursor", func() string {
-							if p.toggling == user.ID {
-								return "not-allowed"
-							}
-							return "pointer"
-						}()).
-						OnClick(p.onToggleActive(user.ID, user.IsActive)).
-						Text(toggleLabel),
-				),
+				app.Td().Style("padding", "12px 16px").Body(toggleUI),
 			))
 	}
 
