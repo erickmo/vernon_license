@@ -388,7 +388,7 @@
       }
       addLog('ok', '✓ Database dibuat / tersambung');
       addLog('ok', '✓ Migrasi dijalankan');
-      addLog('ok', '✓ Superuser dibuat');
+      addLog(d.user_note && d.user_note.startsWith('⚠') ? 'info' : 'ok', d.user_note || '✓ Superuser dibuat');
       addLog('ok', '✓ File .env ditulis');
       addLog('info', '→ Server sedang restart...');
 

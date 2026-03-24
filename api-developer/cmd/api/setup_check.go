@@ -210,23 +210,27 @@ func handleSetupApply(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// — Step 3: Buat superuser —
-	hash, err := bcrypt.GenerateFromPassword([]byte(req.AdminPassword), 12)
-	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "gagal hash password: " + err.Error()})
-		return
-	}
-
-	now := time.Now().UTC()
-	_, err = targetDB.Exec(
-		`INSERT INTO users (id, name, email, password_hash, role, is_active, created_at, updated_at)
-		 VALUES ($1, $2, $3, $4, 'superuser', true, $5, $5)
-		 ON CONFLICT (email) DO NOTHING`,
-		uuid.New().String(), req.AdminName, req.AdminEmail, string(hash), now,
-	)
-	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "gagal membuat superuser: " + err.Error()})
-		return
+	// — Step 3: Buat superuser jika belum ada user sama sekali —
+	userNote := "✓ Superuser dibuat"
+	var userCount int
+	_ = targetDB.QueryRow("SELECT COUNT(*) FROM users").Scan(&userCount)
+	if userCount == 0 {
+		hash, err := bcrypt.GenerateFromPassword([]byte(req.AdminPassword), 12)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "gagal hash password: " + err.Error()})
+			return
+		}
+		now := time.Now().UTC()
+		if _, err = targetDB.Exec(
+			`INSERT INTO users (id, name, email, password_hash, role, is_active, created_at, updated_at)
+			 VALUES ($1, $2, $3, $4, 'superuser', true, $5, $5)`,
+			uuid.New().String(), req.AdminName, req.AdminEmail, string(hash), now,
+		); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "gagal membuat superuser: " + err.Error()})
+			return
+		}
+	} else {
+		userNote = fmt.Sprintf("⚠ User sudah ada (%d), skip pembuatan superuser", userCount)
 	}
 
 	// — Step 4: Tulis .env —
@@ -237,9 +241,10 @@ func handleSetupApply(w http.ResponseWriter, r *http.Request) {
 
 	// Return success ke browser sebelum restart
 	writeJSON(w, http.StatusOK, map[string]string{
-		"status":  "ok",
-		"message": "Setup selesai! Server sedang restart...",
-		"port":    req.AppPort,
+		"status":    "ok",
+		"message":   "Setup selesai! Server sedang restart...",
+		"port":      req.AppPort,
+		"user_note": userNote,
 	})
 
 	// Restart proses dengan config baru — .env sudah ada, main() akan load normal
