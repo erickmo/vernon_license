@@ -103,7 +103,7 @@ func (s *LicenseService) GetByID(ctx context.Context, id uuid.UUID) (*domain.Cli
 }
 
 // DirectCreate membuat license baru secara langsung oleh PO tanpa melalui proposal.
-// Menghasilkan license_key (FL-XXXXXXXX) dan provision_api_key (32-char hex) secara otomatis.
+// Menghasilkan license_key (FL-XXXXXXXX) dan OTP (32-char hex) secara otomatis.
 // Status awal adalah "pending". Produk yang dimaksud harus exist dan aktif.
 func (s *LicenseService) DirectCreate(ctx context.Context, req CreateLicenseRequest, actorID uuid.UUID, actorName string) (*domain.ClientLicense, error) {
 	// Validasi product exist dan active
@@ -121,10 +121,10 @@ func (s *LicenseService) DirectCreate(ctx context.Context, req CreateLicenseRequ
 		return nil, fmt.Errorf("LicenseService.DirectCreate generate license key: %w", err)
 	}
 
-	// Generate provision API key
-	provisionKey, err := licenseutil.GenerateProvisionAPIKey()
+	// Generate registration code
+	registrationCode, err := licenseutil.GenerateOTP()
 	if err != nil {
-		return nil, fmt.Errorf("LicenseService.DirectCreate generate provision key: %w", err)
+		return nil, fmt.Errorf("LicenseService.DirectCreate generate registration code: %w", err)
 	}
 
 	// Normalize check interval default
@@ -135,31 +135,31 @@ func (s *LicenseService) DirectCreate(ctx context.Context, req CreateLicenseRequ
 
 	now := time.Now().UTC()
 	license := &domain.ClientLicense{
-		ID:               uuid.New(),
-		LicenseKey:       licenseKey,
-		ProjectID:        req.ProjectID,
-		CompanyID:        req.CompanyID,
-		ProductID:        req.ProductID,
-		Plan:             req.Plan,
-		Status:           "pending",
-		Modules:          req.Modules,
-		Apps:             req.Apps,
-		ContractAmount:   req.ContractAmount,
-		Description:      req.Description,
-		MaxUsers:         req.MaxUsers,
-		MaxTransPerMonth: req.MaxTransPerMonth,
-		MaxTransPerDay:   req.MaxTransPerDay,
-		MaxItems:         req.MaxItems,
-		MaxCustomers:     req.MaxCustomers,
-		MaxBranches:      req.MaxBranches,
-		MaxStorage:       req.MaxStorage,
-		ExpiresAt:        req.ExpiresAt,
-		ProvisionAPIKey:  &provisionKey,
-		CheckInterval:    checkInterval,
-		IsRegistered:     false,
-		CreatedBy:        actorID,
-		CreatedAt:        now,
-		UpdatedAt:        now,
+		ID:                     uuid.New(),
+		LicenseKey:             licenseKey,
+		ProjectID:              &req.ProjectID,
+		CompanyID:              &req.CompanyID,
+		ProductID:              req.ProductID,
+		Plan:                   req.Plan,
+		Status:                 "pending",
+		Modules:                req.Modules,
+		Apps:                   req.Apps,
+		ContractAmount:         req.ContractAmount,
+		Description:            req.Description,
+		MaxUsers:               req.MaxUsers,
+		MaxTransPerMonth:       req.MaxTransPerMonth,
+		MaxTransPerDay:         req.MaxTransPerDay,
+		MaxItems:               req.MaxItems,
+		MaxCustomers:           req.MaxCustomers,
+		MaxBranches:            req.MaxBranches,
+		MaxStorage:             req.MaxStorage,
+		ExpiresAt:              req.ExpiresAt,
+		OTP: &registrationCode,
+		CheckInterval:          checkInterval,
+		IsRegistered:           false,
+		CreatedBy:              &actorID,
+		CreatedAt:              now,
+		UpdatedAt:              now,
 	}
 
 	if err := s.repo.Create(ctx, license); err != nil {
@@ -183,39 +183,39 @@ func (s *LicenseService) CreateFromProposal(ctx context.Context, proposal *domai
 		return nil, fmt.Errorf("LicenseService.CreateFromProposal generate license key: %w", err)
 	}
 
-	// Generate provision API key
-	provisionKey, err := licenseutil.GenerateProvisionAPIKey()
+	// Generate registration code
+	registrationCode, err := licenseutil.GenerateOTP()
 	if err != nil {
-		return nil, fmt.Errorf("LicenseService.CreateFromProposal generate provision key: %w", err)
+		return nil, fmt.Errorf("LicenseService.CreateFromProposal generate registration code: %w", err)
 	}
 
 	now := time.Now().UTC()
 	license := &domain.ClientLicense{
-		ID:               uuid.New(),
-		LicenseKey:       licenseKey,
-		ProjectID:        proposal.ProjectID,
-		CompanyID:        proposal.CompanyID,
-		ProductID:        proposal.ProductID,
-		Plan:             proposal.Plan,
-		Status:           "pending",
-		Modules:          proposal.Modules,
-		Apps:             proposal.Apps,
-		ContractAmount:   proposal.ContractAmount,
-		MaxUsers:         proposal.MaxUsers,
-		MaxTransPerMonth: proposal.MaxTransPerMonth,
-		MaxTransPerDay:   proposal.MaxTransPerDay,
-		MaxItems:         proposal.MaxItems,
-		MaxCustomers:     proposal.MaxCustomers,
-		MaxBranches:      proposal.MaxBranches,
-		MaxStorage:       proposal.MaxStorage,
-		ExpiresAt:        proposal.ExpiresAt,
-		ProvisionAPIKey:  &provisionKey,
-		CheckInterval:    "6h",
-		IsRegistered:     false,
-		ProposalID:       &proposal.ID,
-		CreatedBy:        actorID,
-		CreatedAt:        now,
-		UpdatedAt:        now,
+		ID:                     uuid.New(),
+		LicenseKey:             licenseKey,
+		ProjectID:              &proposal.ProjectID,
+		CompanyID:              &proposal.CompanyID,
+		ProductID:              proposal.ProductID,
+		Plan:                   proposal.Plan,
+		Status:                 "pending",
+		Modules:                proposal.Modules,
+		Apps:                   proposal.Apps,
+		ContractAmount:         proposal.ContractAmount,
+		MaxUsers:               proposal.MaxUsers,
+		MaxTransPerMonth:       proposal.MaxTransPerMonth,
+		MaxTransPerDay:         proposal.MaxTransPerDay,
+		MaxItems:               proposal.MaxItems,
+		MaxCustomers:           proposal.MaxCustomers,
+		MaxBranches:            proposal.MaxBranches,
+		MaxStorage:             proposal.MaxStorage,
+		ExpiresAt:              proposal.ExpiresAt,
+		OTP: &registrationCode,
+		CheckInterval:          "6h",
+		IsRegistered:           false,
+		ProposalID:             &proposal.ID,
+		CreatedBy:              &actorID,
+		CreatedAt:              now,
+		UpdatedAt:              now,
 	}
 
 	if err := s.repo.Create(ctx, license); err != nil {
@@ -348,17 +348,17 @@ func (s *LicenseService) UpdateConstraints(ctx context.Context, id uuid.UUID, re
 
 	// Catat nilai sebelumnya untuk audit
 	before, _ := json.Marshal(map[string]any{
-		"modules":            license.Modules,
-		"apps":               license.Apps,
-		"max_users":          license.MaxUsers,
+		"modules":             license.Modules,
+		"apps":                license.Apps,
+		"max_users":           license.MaxUsers,
 		"max_trans_per_month": license.MaxTransPerMonth,
-		"max_trans_per_day":  license.MaxTransPerDay,
-		"max_items":          license.MaxItems,
-		"max_customers":      license.MaxCustomers,
-		"max_branches":       license.MaxBranches,
-		"max_storage":        license.MaxStorage,
-		"expires_at":         license.ExpiresAt,
-		"check_interval":     license.CheckInterval,
+		"max_trans_per_day":   license.MaxTransPerDay,
+		"max_items":           license.MaxItems,
+		"max_customers":       license.MaxCustomers,
+		"max_branches":        license.MaxBranches,
+		"max_storage":         license.MaxStorage,
+		"expires_at":          license.ExpiresAt,
+		"check_interval":      license.CheckInterval,
 	})
 
 	// Terapkan perubahan
@@ -383,17 +383,17 @@ func (s *LicenseService) UpdateConstraints(ctx context.Context, id uuid.UUID, re
 
 	// Audit log setelah operasi sukses
 	after, _ := json.Marshal(map[string]any{
-		"modules":            license.Modules,
-		"apps":               license.Apps,
-		"max_users":          license.MaxUsers,
+		"modules":             license.Modules,
+		"apps":                license.Apps,
+		"max_users":           license.MaxUsers,
 		"max_trans_per_month": license.MaxTransPerMonth,
-		"max_trans_per_day":  license.MaxTransPerDay,
-		"max_items":          license.MaxItems,
-		"max_customers":      license.MaxCustomers,
-		"max_branches":       license.MaxBranches,
-		"max_storage":        license.MaxStorage,
-		"expires_at":         license.ExpiresAt,
-		"check_interval":     license.CheckInterval,
+		"max_trans_per_day":   license.MaxTransPerDay,
+		"max_items":           license.MaxItems,
+		"max_customers":       license.MaxCustomers,
+		"max_branches":        license.MaxBranches,
+		"max_storage":         license.MaxStorage,
+		"expires_at":          license.ExpiresAt,
+		"check_interval":      license.CheckInterval,
 	})
 	changes, _ := json.Marshal(map[string]json.RawMessage{
 		"before": before,
@@ -401,6 +401,14 @@ func (s *LicenseService) UpdateConstraints(ctx context.Context, id uuid.UUID, re
 	})
 	LogAudit(ctx, s.auditRepo, s.logger, "license", id, "license_updated", actorID, actorName, changes)
 
+	return nil
+}
+
+// UpdateStatus mengubah status license langsung tanpa validasi transisi (superuser only).
+func (s *LicenseService) UpdateStatus(ctx context.Context, id uuid.UUID, status string) error {
+	if err := s.repo.UpdateStatus(ctx, id, status); err != nil {
+		return fmt.Errorf("LicenseService.UpdateStatus: %w", err)
+	}
 	return nil
 }
 

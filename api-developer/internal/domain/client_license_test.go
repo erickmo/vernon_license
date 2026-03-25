@@ -14,7 +14,7 @@ func newLicense(status string) *domain.ClientLicense {
 		ID:         uuid.New(),
 		LicenseKey: "FL-TESTKEY1",
 		Status:     status,
-		CreatedBy:  uuid.New(),
+		CreatedBy:  func() *uuid.UUID { id := uuid.New(); return &id }(),
 		CreatedAt:  time.Now(),
 		UpdatedAt:  time.Now(),
 	}

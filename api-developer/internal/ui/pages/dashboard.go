@@ -62,12 +62,14 @@ type chartSegment struct {
 // DashboardPage menampilkan summary dan statistik Vernon License.
 type DashboardPage struct {
 	app.Compo
-	stats        *dashboardStats
-	loading      bool
-	errMsg       string
-	apiBase      string // origin URL, e.g. "http://localhost:8081"
-	authStore    store.AuthStore
-	otpExpiresIn int64 // remaining seconds for OTP expiry
+	stats             *dashboardStats
+	loading           bool
+	errMsg            string
+	apiBase           string // origin URL, e.g. "http://localhost:8081"
+	authStore         store.AuthStore
+	otpExpiresIn      int64  // remaining seconds for OTP expiry
+	otpCopiedFeedback bool   // show "Copied!" feedback
+	otpCopyButtonText string // dynamic button text
 }
 
 // OnNav dipanggil saat halaman ini di-navigasi.
@@ -105,6 +107,11 @@ func (p *DashboardPage) loadStats(ctx app.Context) {
 		ctx.Dispatch(func(ctx app.Context) {
 			p.loading = false
 			if err != nil {
+				if err == api.ErrUnauthorized {
+					p.authStore.Clear()
+					ctx.Navigate("/login")
+					return
+				}
 				p.errMsg = "Gagal memuat dashboard: " + err.Error()
 				return
 			}
@@ -144,6 +151,23 @@ func (p *DashboardPage) startOTPCountdown(ctx app.Context) {
 	})
 }
 
+// onCopyOTP menyalin OTP code ke clipboard dan menampilkan feedback.
+func (p *DashboardPage) onCopyOTP(ctx app.Context, e app.Event) {
+	if p.stats != nil && p.stats.OTP.Code != "" {
+		app.Window().Get("navigator").Get("clipboard").Call("writeText", p.stats.OTP.Code)
+
+		// Show feedback
+		p.otpCopiedFeedback = true
+		ctx.Update()
+
+		// Reset feedback after 2 seconds
+		ctx.After(2*time.Second, func(ctx app.Context) {
+			p.otpCopiedFeedback = false
+			ctx.Update()
+		})
+	}
+}
+
 // refreshOTPOnly mengambil OTP terbaru tanpa refresh seluruh dashboard.
 // Silent refresh - tidak ada loading state atau error message yang ditampilkan.
 func (p *DashboardPage) refreshOTPOnly(ctx app.Context) {
@@ -156,6 +180,11 @@ func (p *DashboardPage) refreshOTPOnly(ctx app.Context) {
 
 		ctx.Dispatch(func(ctx app.Context) {
 			if err != nil {
+				if err == api.ErrUnauthorized {
+					p.authStore.Clear()
+					ctx.Navigate("/login")
+					return
+				}
 				// Silent fail - coba lagi nanti tanpa menampilkan error
 				p.startOTPCountdown(ctx)
 				return
@@ -262,7 +291,7 @@ func (p *DashboardPage) renderContent() app.UI {
 							p.renderSummaryCards(),
 							p.renderOTPCard(),
 							p.renderChartsRow(),
-						p.renderAPIInfo(),
+							p.renderAPIInfo(),
 							p.renderExpiringTable(),
 						)
 				},
@@ -361,7 +390,7 @@ func (p *DashboardPage) summaryCard(title, value, subtitle, accentColor, iconPat
 						Style("color", accentColor).
 						Style("flex-shrink", "0").
 						Body(
-							app.Raw(`<svg style="width:20px;height:20px" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="` + iconPath + `"/></svg>`),
+							app.Raw(`<svg style="width:20px;height:20px" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="`+iconPath+`"/></svg>`),
 						),
 				),
 			app.Div().
@@ -403,14 +432,70 @@ func (p *DashboardPage) renderOTPCard() app.UI {
 								Style("text-transform", "uppercase").
 								Style("letter-spacing", "0.05em").
 								Style("margin-bottom", "8px").
-								Text("Client Registration Code"),
+								Text("OTP"),
 							app.Div().
-								Style("color", "#E2D9F3").
-								Style("font-size", "24px").
-								Style("font-weight", "700").
-								Style("font-family", "monospace").
-								Style("letter-spacing", "2px").
-								Text(p.stats.OTP.Code),
+								Style("display", "flex").
+								Style("align-items", "center").
+								Style("gap", "12px").
+								Body(
+									app.Div().
+										Style("color", "#E2D9F3").
+										Style("font-size", "24px").
+										Style("font-weight", "700").
+										Style("font-family", "monospace").
+										Style("letter-spacing", "2px").
+										Text(p.stats.OTP.Code),
+									app.Button().
+										Style("background", func() string {
+											if p.otpCopiedFeedback {
+												return "rgba(34,197,94,0.3)"
+											}
+											return "rgba(38,184,176,0.3)"
+										}()).
+										Style("border", func() string {
+											if p.otpCopiedFeedback {
+												return "1px solid rgba(34,197,94,0.6)"
+											}
+											return "1px solid rgba(38,184,176,0.6)"
+										}()).
+										Style("border-radius", "6px").
+										Style("padding", "8px 14px").
+										Style("color", func() string {
+											if p.otpCopiedFeedback {
+												return "#22C55E"
+											}
+											return "#26B8B0"
+										}()).
+										Style("font-size", "13px").
+										Style("font-weight", "700").
+										Style("cursor", "pointer").
+										Style("transition", "all 0.3s ease").
+										Style("white-space", "nowrap").
+										Style("display", "flex").
+										Style("align-items", "center").
+										Style("gap", "4px").
+										Style("transform", func() string {
+											if p.otpCopiedFeedback {
+												return "scale(1.05)"
+											}
+											return "scale(1)"
+										}()).
+										OnClick(p.onCopyOTP).
+										Body(
+											app.Raw(func() string {
+												if p.otpCopiedFeedback {
+													return `<svg style="width:14px;height:14px" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>`
+												}
+												return `<svg style="width:14px;height:14px" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>`
+											}()),
+											app.Span().Text(func() string {
+												if p.otpCopiedFeedback {
+													return "Copied!"
+												}
+												return "Copy"
+											}()),
+										),
+								),
 							app.Div().
 								Style("color", "#9B8DB5").
 								Style("font-size", "11px").

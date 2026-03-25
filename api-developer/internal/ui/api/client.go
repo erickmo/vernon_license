@@ -11,6 +11,9 @@ import (
 	"net/http"
 )
 
+// ErrUnauthorized dikembalikan saat API merespons 401.
+var ErrUnauthorized = fmt.Errorf("unauthorized")
+
 // ErrorResponse adalah format JSON error dari API.
 type ErrorResponse struct {
 	Error struct {
@@ -87,16 +90,16 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body any, r
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
+		// 401 selalu return ErrUnauthorized tanpa cek body
+		if resp.StatusCode == 401 {
+			return ErrUnauthorized
+		}
 		var errResp ErrorResponse
 		if decErr := json.NewDecoder(resp.Body).Decode(&errResp); decErr == nil && errResp.Error.Message != "" {
 			return fmt.Errorf("api error %d: %s — %s", resp.StatusCode, errResp.Error.Code, errResp.Error.Message)
 		}
-		// Fallback untuk error response yang bukan JSON
 		if resp.StatusCode == 403 {
 			return fmt.Errorf("Anda tidak memiliki izin untuk mengakses resource ini")
-		}
-		if resp.StatusCode == 401 {
-			return fmt.Errorf("Sesi Anda telah berakhir. Silakan login kembali")
 		}
 		return fmt.Errorf("api error: status %d", resp.StatusCode)
 	}

@@ -15,33 +15,32 @@ import (
 
 // LicenseDetail adalah representasi lengkap license untuk tampilan detail.
 type LicenseDetail struct {
-	ID               string   `json:"id"`
-	LicenseKey       string   `json:"license_key"`
-	CompanyID        string   `json:"company_id"`
-	CompanyName      string   `json:"company_name"`
-	ProjectID        string   `json:"project_id"`
-	ProjectName      string   `json:"project_name"`
-	ProductName      string   `json:"product_name"`
-	Plan             string   `json:"plan"`
-	Status           string   `json:"status"`
-	Modules          []string `json:"modules"`
-	Apps             []string `json:"apps"`
-	ContractAmount   *float64 `json:"contract_amount"`
-	Description      string   `json:"description"`
-	MaxUsers         *int     `json:"max_users"`
-	MaxTransPerMonth *int     `json:"max_trans_per_month"`
-	MaxTransPerDay   *int     `json:"max_trans_per_day"`
-	MaxItems         *int     `json:"max_items"`
-	MaxCustomers     *int     `json:"max_customers"`
-	MaxBranches      *int     `json:"max_branches"`
-	MaxStorage       *int     `json:"max_storage"`
-	ExpiresAt        *string  `json:"expires_at"`
-	IsRegistered     bool     `json:"is_registered"`
-	InstanceURL      string   `json:"instance_url"`
-	InstanceName     string   `json:"instance_name"`
-	ProvisionAPIKey  string   `json:"provision_api_key"`
-	CheckInterval    string   `json:"check_interval"`
-	LastPullAt       *string  `json:"last_pull_at"`
+	ID                     string   `json:"id"`
+	LicenseKey             string   `json:"license_key"`
+	CompanyID              string   `json:"company_id"`
+	CompanyName            string   `json:"company_name"`
+	ProjectID              string   `json:"project_id"`
+	ProjectName            string   `json:"project_name"`
+	ProductName            string   `json:"product_name"`
+	Plan                   string   `json:"plan"`
+	Status                 string   `json:"status"`
+	Modules                []string `json:"modules"`
+	Apps                   []string `json:"apps"`
+	ContractAmount         *float64 `json:"contract_amount"`
+	Description            string   `json:"description"`
+	MaxUsers               *int     `json:"max_users"`
+	MaxTransPerMonth       *int     `json:"max_trans_per_month"`
+	MaxTransPerDay         *int     `json:"max_trans_per_day"`
+	MaxItems               *int     `json:"max_items"`
+	MaxCustomers           *int     `json:"max_customers"`
+	MaxBranches            *int     `json:"max_branches"`
+	MaxStorage             *int     `json:"max_storage"`
+	ExpiresAt              *string  `json:"expires_at"`
+	IsRegistered           bool     `json:"is_registered"`
+	InstanceURL            string   `json:"instance_url"`
+	InstanceName           string   `json:"instance_name"`
+	CheckInterval          string   `json:"check_interval"`
+	LastPullAt             *string  `json:"last_pull_at"`
 }
 
 // LicenseDetailPage menampilkan detail license dengan 3 tabs: Info, Registration, Activity.
@@ -55,6 +54,7 @@ type LicenseDetailPage struct {
 	errMsg             string
 	showSuspendConfirm bool
 	authStore          store.AuthStore
+	showStatusDropdown bool
 }
 
 // OnNav dipanggil saat halaman ini di-navigasi.
@@ -204,16 +204,37 @@ func (p *LicenseDetailPage) onRenew(ctx app.Context, e app.Event) {
 	})
 }
 
-// onCopyProvisionKey menyalin provision API key ke clipboard.
-func (p *LicenseDetailPage) onCopyProvisionKey(ctx app.Context, e app.Event) {
-	if p.license != nil {
-		app.Window().Get("navigator").Get("clipboard").Call("writeText", p.license.ProvisionAPIKey)
-	}
-}
-
 // onBack navigasi ke daftar licenses.
 func (p *LicenseDetailPage) onBack(ctx app.Context, e app.Event) {
 	ctx.Navigate("/licenses")
+}
+
+// onSetStatus mengubah status license ke nilai yang dipilih (superuser only).
+func (p *LicenseDetailPage) onSetStatus(status string) func(app.Context, app.Event) {
+	return func(ctx app.Context, e app.Event) {
+		p.showStatusDropdown = false
+		token := p.authStore.GetToken()
+		licenseID := p.licenseID
+		ctx.Async(func() {
+			client := api.NewClient("", token)
+			body := map[string]string{"status": status}
+			if err := client.Put(context.Background(), "/api/internal/licenses/"+licenseID+"/status", body, nil); err != nil {
+				ctx.Dispatch(func(ctx app.Context) {
+					p.errMsg = err.Error()
+				})
+				return
+			}
+			ctx.Dispatch(func(ctx app.Context) {
+				p.errMsg = ""
+				p.fetchLicense(ctx)
+			})
+		})
+	}
+}
+
+// onToggleStatusDropdown membuka/menutup dropdown status.
+func (p *LicenseDetailPage) onToggleStatusDropdown(ctx app.Context, e app.Event) {
+	p.showStatusDropdown = !p.showStatusDropdown
 }
 
 // Render menampilkan halaman detail license dalam Shell.
@@ -361,6 +382,11 @@ func (p *LicenseDetailPage) renderLicenseHeader() app.UI {
 							app.If(p.authStore.HasRole("project_owner"),
 								func() app.UI {
 									return p.renderActionButtons()
+								},
+							),
+							app.If(p.authStore.HasRole("superuser"),
+								func() app.UI {
+									return p.renderSuperuserStatusDropdown()
 								},
 							),
 						),
@@ -619,6 +645,66 @@ func (p *LicenseDetailPage) renderActionButtons() app.UI {
 	return app.Div()
 }
 
+// renderSuperuserStatusDropdown merender dropdown untuk superuser mengubah status secara langsung.
+func (p *LicenseDetailPage) renderSuperuserStatusDropdown() app.UI {
+	statuses := []struct {
+		value string
+		label string
+		color string
+	}{
+		{"pending", "Pending", "#F59E0B"},
+		{"active", "Active", "#22C55E"},
+		{"trial", "Trial", "#26B8B0"},
+		{"suspended", "Suspended", "#EF4444"},
+		{"expired", "Expired", "#9B8DB5"},
+	}
+
+	items := make([]app.UI, 0, len(statuses))
+	for _, s := range statuses {
+		s := s
+		items = append(items, app.Div().
+			Style("padding", "8px 16px").
+			Style("cursor", "pointer").
+			Style("font-size", "13px").
+			Style("color", s.color).
+			Style("white-space", "nowrap").
+			OnClick(p.onSetStatus(s.value)).
+			Text(s.label),
+		)
+	}
+
+	return app.Div().
+		Style("position", "relative").
+		Body(
+			app.Button().
+				Style("background", "rgba(77,41,117,0.2)").
+				Style("border", "1px solid rgba(77,41,117,0.5)").
+				Style("border-radius", "8px").
+				Style("padding", "7px 16px").
+				Style("color", "#9B8DB5").
+				Style("font-size", "13px").
+				Style("font-weight", "600").
+				Style("cursor", "pointer").
+				OnClick(p.onToggleStatusDropdown).
+				Text("Set Status ▾"),
+			app.If(p.showStatusDropdown,
+				func() app.UI {
+					return app.Div().
+						Style("position", "absolute").
+						Style("top", "calc(100% + 4px)").
+						Style("right", "0").
+						Style("background", "#1A1035").
+						Style("border", "1px solid rgba(77,41,117,0.5)").
+						Style("border-radius", "8px").
+						Style("z-index", "100").
+						Style("min-width", "140px").
+						Style("overflow", "hidden").
+						Body(items...)
+				},
+			),
+		)
+}
+
 // renderRegistrationTab merender tab Registration Status.
 func (p *LicenseDetailPage) renderRegistrationTab() app.UI {
 	l := p.license
@@ -689,63 +775,6 @@ func (p *LicenseDetailPage) renderRegistrationTab() app.UI {
 					infoCard("Check Interval", l.CheckInterval),
 				),
 
-			// Provision API Key — hanya visible untuk superuser
-			app.If(p.authStore.HasRole("superuser"),
-				func() app.UI {
-					provKey := l.ProvisionAPIKey
-					if provKey == "" {
-						provKey = "—"
-					}
-					return app.Div().
-						Style("background", "#1A1035").
-						Style("border", "1px solid rgba(38,184,176,0.3)").
-						Style("border-radius", "12px").
-						Style("padding", "16px 20px").
-						Body(
-							app.Div().
-								Style("font-size", "11px").
-								Style("color", "#26B8B0").
-								Style("text-transform", "uppercase").
-								Style("letter-spacing", "0.08em").
-								Style("margin-bottom", "8px").
-								Style("display", "flex").
-								Style("align-items", "center").
-								Style("gap", "8px").
-								Body(
-									app.Span().Text("🔑 Provision API Key (Superuser Only)"),
-								),
-							app.Div().
-								Style("display", "flex").
-								Style("align-items", "center").
-								Style("gap", "12px").
-								Body(
-									app.Span().
-										Style("font-family", "monospace").
-										Style("font-size", "14px").
-										Style("color", "#26B8B0").
-										Style("letter-spacing", "0.1em").
-										Style("flex", "1").
-										Text(provKey),
-									app.Button().
-										Style("background", "rgba(38,184,176,0.15)").
-										Style("border", "1px solid rgba(38,184,176,0.4)").
-										Style("border-radius", "6px").
-										Style("padding", "6px 14px").
-										Style("color", "#26B8B0").
-										Style("font-size", "12px").
-										Style("font-weight", "600").
-										Style("cursor", "pointer").
-										OnClick(p.onCopyProvisionKey).
-										Text("Copy"),
-								),
-							app.Div().
-								Style("font-size", "11px").
-								Style("color", "#9B8DB5").
-								Style("margin-top", "8px").
-								Text("⚠️ Client app hanya bisa register dengan current key. Rotates setiap 30 menit."),
-						)
-				},
-			),
 		)
 }
 

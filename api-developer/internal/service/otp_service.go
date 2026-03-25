@@ -30,7 +30,7 @@ func NewOTPService(db *sqlx.DB, log *zap.Logger) *OTPService {
 }
 
 // GenerateOTP menghasilkan OTP baru (16 karakter hex).
-// OTP berlaku selama 5 menit atau sampai digunakan, mana yang lebih dulu.
+// OTP berlaku selama 5 menit dan dapat digunakan berkali-kali dalam periode tersebut.
 func (s *OTPService) GenerateOTP(ctx context.Context) (string, error) {
 	b := make([]byte, 8)
 	if _, err := rand.Read(b); err != nil {
@@ -38,7 +38,7 @@ func (s *OTPService) GenerateOTP(ctx context.Context) (string, error) {
 	}
 	code := hex.EncodeToString(b)
 
-	expiresAt := time.Now().Add(5 * time.Minute)
+	expiresAt := time.Now().Add(30 * time.Minute)
 	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO otp (id, code, created_at, expires_at)
 		VALUES ($1, $2, NOW(), $3)
@@ -57,8 +57,7 @@ func (s *OTPService) GetCurrentOTP(ctx context.Context) (string, time.Time, erro
 	const q = `
 		SELECT code, expires_at
 		FROM otp
-		WHERE used_at IS NULL
-		  AND expires_at > NOW()
+		WHERE expires_at > NOW()
 		ORDER BY created_at DESC
 		LIMIT 1
 	`
@@ -67,7 +66,6 @@ func (s *OTPService) GetCurrentOTP(ctx context.Context) (string, time.Time, erro
 	var expiresAt time.Time
 	err := s.db.QueryRowContext(ctx, q).Scan(&code, &expiresAt)
 	if err == nil {
-		// OTP ditemukan dan aktif
 		return code, expiresAt, nil
 	}
 
@@ -77,7 +75,6 @@ func (s *OTPService) GetCurrentOTP(ctx context.Context) (string, time.Time, erro
 		return "", time.Time{}, fmt.Errorf("GetCurrentOTP: %w", err)
 	}
 
-	// Ambil expiry time dari OTP yang baru saja dibuat
 	var newExpiresAt time.Time
 	err = s.db.QueryRowContext(ctx, `
 		SELECT expires_at FROM otp WHERE code = $1
@@ -87,31 +84,6 @@ func (s *OTPService) GetCurrentOTP(ctx context.Context) (string, time.Time, erro
 	}
 
 	return newCode, newExpiresAt, nil
-}
-
-// MarkAsUsed menandai OTP sebagai sudah digunakan.
-// Setelah ini, OTP tidak bisa digunakan lagi.
-func (s *OTPService) MarkAsUsed(ctx context.Context, code string) error {
-	res, err := s.db.ExecContext(ctx, `
-		UPDATE otp
-		SET used_at = NOW()
-		WHERE code = $1 AND used_at IS NULL AND expires_at > NOW()
-	`, code)
-	if err != nil {
-		return fmt.Errorf("MarkAsUsed: %w", err)
-	}
-
-	rows, err := res.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("MarkAsUsed: rows affected: %w", err)
-	}
-
-	if rows == 0 {
-		return fmt.Errorf("MarkAsUsed: OTP not found or already used/expired")
-	}
-
-	s.log.Info("OTP marked as used", zap.String("code", code))
-	return nil
 }
 
 // CleanupExpired menghapus OTP yang sudah expired.

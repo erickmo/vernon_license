@@ -53,6 +53,24 @@ func (r *CompanyRepo) FindAll(ctx context.Context) ([]*domain.Company, error) {
 	return companies, nil
 }
 
+// FindByName mencari company berdasarkan nama (case-insensitive).
+func (r *CompanyRepo) FindByName(ctx context.Context, name string) (*domain.Company, error) {
+	var c domain.Company
+	const q = `
+		SELECT id, name, email, phone, address, pic_name, pic_email, pic_phone,
+		       notes, created_by, created_at, updated_at, deleted_at
+		FROM companies
+		WHERE LOWER(name) = LOWER($1) AND deleted_at IS NULL
+		LIMIT 1`
+	if err := r.db.GetContext(ctx, &c, q, name); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, domain.ErrCompanyNotFound
+		}
+		return nil, fmt.Errorf("CompanyRepo.FindByName: %w", err)
+	}
+	return &c, nil
+}
+
 // Create menyimpan company baru ke database.
 func (r *CompanyRepo) Create(ctx context.Context, c *domain.Company) error {
 	const q = `

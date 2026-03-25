@@ -262,6 +262,7 @@ func (p *NotificationsPage) renderList() app.UI {
 	}
 
 	return app.Div().
+		Style("width", "100%").
 		Style("background", "#1A1035").
 		Style("border", "1px solid rgba(77,41,117,0.3)").
 		Style("border-radius", "12px").
@@ -306,7 +307,7 @@ func (p *NotificationsPage) renderNotifItem(notif NotificationItem) app.UI {
 				Style("background", notifIconBg(notif.Type)).
 				Style("color", notifIconColor(notif.Type)).
 				Body(
-					app.Raw(`<svg style="width:16px;height:16px" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="` + notifIconPath(notif.Type) + `"/></svg>`),
+					app.Raw(`<svg style="width:16px;height:16px" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="`+notifIconPath(notif.Type)+`"/></svg>`),
 				),
 
 			// Content

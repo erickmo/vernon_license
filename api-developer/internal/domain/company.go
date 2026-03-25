@@ -18,7 +18,7 @@ type Company struct {
 	PICEmail  *string    `db:"pic_email"`
 	PICPhone  *string    `db:"pic_phone"`
 	Notes     *string    `db:"notes"`
-	CreatedBy uuid.UUID  `db:"created_by"`
+	CreatedBy *uuid.UUID `db:"created_by"`
 	CreatedAt time.Time  `db:"created_at"`
 	UpdatedAt time.Time  `db:"updated_at"`
 	DeletedAt *time.Time `db:"deleted_at"`
@@ -31,6 +31,10 @@ type CompanyRepository interface {
 
 	// FindAll mengembalikan semua company yang belum dihapus.
 	FindAll(ctx context.Context) ([]*Company, error)
+
+	// FindByName mencari company berdasarkan nama (case-insensitive).
+	// Returns ErrCompanyNotFound jika tidak ada.
+	FindByName(ctx context.Context, name string) (*Company, error)
 
 	// Create menyimpan company baru ke database.
 	Create(ctx context.Context, c *Company) error

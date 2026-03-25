@@ -14,6 +14,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
 	"github.com/maxence-charriere/go-app/v10/pkg/app"
@@ -67,6 +68,7 @@ func main() {
 			fx.Annotate(database.NewProjectRepo, fx.As(new(domain.ProjectRepository))),
 			fx.Annotate(database.NewProposalRepo, fx.As(new(domain.ProposalRepository))),
 			fx.Annotate(database.NewNotificationRepo, fx.As(new(domain.NotificationRepository))),
+			fx.Annotate(database.NewOTPRepository, fx.As(new(domain.OTPRepository))),
 		),
 
 		// Services
@@ -150,6 +152,14 @@ func provideRouter(
 	r.Use(chimiddleware.RequestID)
 	r.Use(chimiddleware.RealIP)
 	r.Use(chimiddleware.Recoverer)
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{"*"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: false,
+		MaxAge:           300,
+	}))
 
 	// Public API routes dengan rate limiting 60 req/min per IP
 	r.Group(func(r chi.Router) {
@@ -186,11 +196,12 @@ func provideRouter(
 		r.Get("/api/internal/licenses", licenseHandler.List)
 		r.Post("/api/internal/licenses", licenseHandler.Create)
 		r.Get("/api/internal/licenses/{id}", licenseHandler.GetByID)
-		r.Get("/api/internal/licenses/{id}/provision-key", licenseHandler.GetProvisionKey)
+		r.Get("/api/internal/licenses/{id}/otp", licenseHandler.GetOTP)
 		r.Put("/api/internal/licenses/{id}/activate", licenseHandler.Activate)
 		r.Put("/api/internal/licenses/{id}/suspend", licenseHandler.Suspend)
 		r.Put("/api/internal/licenses/{id}/renew", licenseHandler.Renew)
 		r.Put("/api/internal/licenses/{id}/constraints", licenseHandler.UpdateConstraints)
+		r.Put("/api/internal/licenses/{id}/status", licenseHandler.SetStatus)
 		// Audit logs hanya bisa diakses oleh superuser
 		r.Group(func(r chi.Router) {
 			r.Use(appmiddleware.RequireRole("superuser"))
@@ -284,13 +295,12 @@ func startServer(lc fx.Lifecycle, r *chi.Mux, cfg *config.Config, log *zap.Logge
 }
 
 // startScheduler mendaftarkan lifecycle hook untuk start/stop background scheduler.
-// Scheduler menjalankan job provision key rotation setiap 30 menit.
-func startScheduler(lc fx.Lifecycle, provisionService *service.ProvisionService, log *zap.Logger) {
+func startScheduler(lc fx.Lifecycle, otpService *service.OTPService, log *zap.Logger) {
 	sched := scheduler.New(log)
 
-	// Schedule provision key rotation setiap 30 menit
-	sched.Schedule("rotate-provision-keys", 30*time.Minute, func(ctx context.Context) error {
-		return provisionService.RotateAll(ctx)
+	// Cleanup expired OTP records setiap jam
+	sched.Schedule("cleanup-expired-otp", 1*time.Hour, func(ctx context.Context) error {
+		return otpService.CleanupExpired(ctx)
 	})
 
 	lc.Append(fx.Hook{

@@ -87,7 +87,7 @@ func (s *CompanyService) Create(ctx context.Context, req CreateCompanyRequest, a
 		PICEmail:  req.PICEmail,
 		PICPhone:  req.PICPhone,
 		Notes:     req.Notes,
-		CreatedBy: actorID,
+		CreatedBy: &actorID,
 		CreatedAt: time.Now().UTC(),
 		UpdatedAt: time.Now().UTC(),
 	}

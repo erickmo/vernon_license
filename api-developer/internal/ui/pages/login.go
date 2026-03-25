@@ -4,6 +4,8 @@
 package pages
 
 import (
+	"context"
+
 	"github.com/flashlab/vernon-license/internal/ui/api"
 	"github.com/flashlab/vernon-license/internal/ui/store"
 	"github.com/maxence-charriere/go-app/v10/pkg/app"
@@ -140,7 +142,6 @@ func (p *LoginPage) Render() app.UI {
 												ID("email").
 												Type("email").
 												Placeholder("email@example.com").
-												Value(p.email).
 												Required(true).
 												Style("width", "100%").
 												Style("background", "#0F0A1A").
@@ -151,7 +152,7 @@ func (p *LoginPage) Render() app.UI {
 												Style("font-size", "15px").
 												Style("box-sizing", "border-box").
 												Style("outline", "none").
-												OnChange(p.onEmailChange),
+												OnInput(p.onEmailChange),
 										),
 
 									// Password field
@@ -170,7 +171,6 @@ func (p *LoginPage) Render() app.UI {
 												ID("password").
 												Type("password").
 												Placeholder("••••••••").
-												Value(p.password).
 												Required(true).
 												Style("width", "100%").
 												Style("background", "#0F0A1A").
@@ -181,7 +181,7 @@ func (p *LoginPage) Render() app.UI {
 												Style("font-size", "15px").
 												Style("box-sizing", "border-box").
 												Style("outline", "none").
-												OnChange(p.onPasswordChange),
+												OnInput(p.onPasswordChange),
 										),
 
 									// Submit button
@@ -255,16 +255,18 @@ func (p *LoginPage) onSubmit(ctx app.Context, e app.Event) {
 		client := api.NewClient("", "")
 
 		var resp loginResponse
-		err := client.Post(ctx, "/api/internal/auth/login", map[string]string{
+		err := client.Post(context.Background(), "/api/internal/auth/login", map[string]string{
 			"email":    email,
 			"password": password,
 		}, &resp)
 
 		ctx.Dispatch(func(ctx app.Context) {
 			p.loading = false
+			ctx.Update()
 
 			if err != nil {
 				p.errMsg = "Email atau password salah."
+				ctx.Update()
 				return
 			}
 
@@ -276,9 +278,11 @@ func (p *LoginPage) onSubmit(ctx app.Context, e app.Event) {
 			}
 			if saveErr := p.authStore.Save(authUser); saveErr != nil {
 				p.errMsg = "Gagal menyimpan sesi. Coba lagi."
+				ctx.Update()
 				return
 			}
 
+			// Redirect ke dashboard setelah login berhasil
 			ctx.Navigate("/")
 		})
 	})

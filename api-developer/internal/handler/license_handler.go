@@ -19,12 +19,12 @@ import (
 
 // LicenseHandler menangani HTTP request untuk manajemen license internal.
 type LicenseHandler struct {
-	licenseSvc  *service.LicenseService
-	companySvc  *service.CompanyService
-	projectSvc  *service.ProjectService
-	productSvc  *service.ProductService
-	auditSvc    *service.AuditService
-	logger      *zap.Logger
+	licenseSvc *service.LicenseService
+	companySvc *service.CompanyService
+	projectSvc *service.ProjectService
+	productSvc *service.ProductService
+	auditSvc   *service.AuditService
+	logger     *zap.Logger
 }
 
 // NewLicenseHandler membuat instance LicenseHandler baru.
@@ -61,33 +61,33 @@ type licenseListItemDTO struct {
 
 // licenseDetailDTO adalah representasi lengkap license untuk tampilan detail.
 type licenseDetailDTO struct {
-	ID               string   `json:"id"`
-	LicenseKey       string   `json:"license_key"`
-	CompanyID        string   `json:"company_id"`
-	CompanyName      string   `json:"company_name"`
-	ProjectID        string   `json:"project_id"`
-	ProjectName      string   `json:"project_name"`
-	ProductName      string   `json:"product_name"`
-	Plan             string   `json:"plan"`
-	Status           string   `json:"status"`
-	Modules          []string `json:"modules"`
-	Apps             []string `json:"apps"`
-	ContractAmount   *float64 `json:"contract_amount"`
-	Description      string   `json:"description"`
-	MaxUsers         *int     `json:"max_users"`
-	MaxTransPerMonth *int     `json:"max_trans_per_month"`
-	MaxTransPerDay   *int     `json:"max_trans_per_day"`
-	MaxItems         *int     `json:"max_items"`
-	MaxCustomers     *int     `json:"max_customers"`
-	MaxBranches      *int     `json:"max_branches"`
-	MaxStorage       *int     `json:"max_storage"`
-	ExpiresAt        *string  `json:"expires_at"`
-	IsRegistered     bool     `json:"is_registered"`
-	InstanceURL      string   `json:"instance_url"`
-	InstanceName     string   `json:"instance_name"`
-	ProvisionAPIKey  string   `json:"provision_api_key"`
-	CheckInterval    string   `json:"check_interval"`
-	LastPullAt       *string  `json:"last_pull_at"`
+	ID                     string   `json:"id"`
+	LicenseKey             string   `json:"license_key"`
+	CompanyID              string   `json:"company_id"`
+	CompanyName            string   `json:"company_name"`
+	ProjectID              string   `json:"project_id"`
+	ProjectName            string   `json:"project_name"`
+	ProductName            string   `json:"product_name"`
+	Plan                   string   `json:"plan"`
+	Status                 string   `json:"status"`
+	Modules                []string `json:"modules"`
+	Apps                   []string `json:"apps"`
+	ContractAmount         *float64 `json:"contract_amount"`
+	Description            string   `json:"description"`
+	MaxUsers               *int     `json:"max_users"`
+	MaxTransPerMonth       *int     `json:"max_trans_per_month"`
+	MaxTransPerDay         *int     `json:"max_trans_per_day"`
+	MaxItems               *int     `json:"max_items"`
+	MaxCustomers           *int     `json:"max_customers"`
+	MaxBranches            *int     `json:"max_branches"`
+	MaxStorage             *int     `json:"max_storage"`
+	ExpiresAt              *string  `json:"expires_at"`
+	IsRegistered           bool     `json:"is_registered"`
+	InstanceURL            string   `json:"instance_url"`
+	InstanceName           string   `json:"instance_name"`
+	OTP string   `json:"otp"`
+	CheckInterval          string   `json:"check_interval"`
+	LastPullAt             *string  `json:"last_pull_at"`
 }
 
 // createLicenseRequest adalah body JSON untuk POST /api/internal/licenses.
@@ -133,13 +133,13 @@ type updateConstraintsRequest struct {
 
 // auditLogDTO adalah representasi audit log untuk response API.
 type auditLogDTO struct {
-	ID         string `json:"id"`
-	Action     string `json:"action"`
-	ActorID    string `json:"actor_id"`
-	ActorName  string `json:"actor_name"`
-	Changes    any    `json:"changes"`
-	Metadata   any    `json:"metadata"`
-	CreatedAt  string `json:"created_at"`
+	ID        string `json:"id"`
+	Action    string `json:"action"`
+	ActorID   string `json:"actor_id"`
+	ActorName string `json:"actor_name"`
+	Changes   any    `json:"changes"`
+	Metadata  any    `json:"metadata"`
+	CreatedAt string `json:"created_at"`
 }
 
 // List menangani GET /api/internal/licenses.
@@ -162,11 +162,15 @@ func (h *LicenseHandler) List(w http.ResponseWriter, r *http.Request) {
 			IsRegistered: l.IsRegistered,
 		}
 
-		if company, err := h.companySvc.GetByID(r.Context(), l.CompanyID); err == nil {
-			item.CompanyName = company.Name
+		if l.CompanyID != nil {
+			if company, err := h.companySvc.GetByID(r.Context(), *l.CompanyID); err == nil {
+				item.CompanyName = company.Name
+			}
 		}
-		if project, err := h.projectSvc.GetByID(r.Context(), l.ProjectID); err == nil {
-			item.ProjectName = project.Name
+		if l.ProjectID != nil {
+			if project, err := h.projectSvc.GetByID(r.Context(), *l.ProjectID); err == nil {
+				item.ProjectName = project.Name
+			}
 		}
 		if product, err := h.productSvc.GetByID(r.Context(), l.ProductID); err == nil {
 			item.ProductName = product.Name
@@ -210,11 +214,15 @@ func (h *LicenseHandler) ListByProject(w http.ResponseWriter, r *http.Request) {
 			IsRegistered: l.IsRegistered,
 		}
 
-		if company, err := h.companySvc.GetByID(r.Context(), l.CompanyID); err == nil {
-			item.CompanyName = company.Name
+		if l.CompanyID != nil {
+			if company, err := h.companySvc.GetByID(r.Context(), *l.CompanyID); err == nil {
+				item.CompanyName = company.Name
+			}
 		}
-		if project, err := h.projectSvc.GetByID(r.Context(), l.ProjectID); err == nil {
-			item.ProjectName = project.Name
+		if l.ProjectID != nil {
+			if project, err := h.projectSvc.GetByID(r.Context(), *l.ProjectID); err == nil {
+				item.ProjectName = project.Name
+			}
 		}
 		if product, err := h.productSvc.GetByID(r.Context(), l.ProductID); err == nil {
 			item.ProductName = product.Name
@@ -232,7 +240,7 @@ func (h *LicenseHandler) ListByProject(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetByID menangani GET /api/internal/licenses/{id}.
-// Mengembalikan detail lengkap license termasuk provision_api_key.
+// Mengembalikan detail lengkap license termasuk OTP.
 func (h *LicenseHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	id, err := parseUUID(idStr)
@@ -548,6 +556,61 @@ func (h *LicenseHandler) UpdateConstraints(w http.ResponseWriter, r *http.Reques
 	writeJSON(w, http.StatusOK, map[string]string{"result": "ok"})
 }
 
+// SetStatus menangani PUT /api/internal/licenses/{id}/status.
+// Mengubah status license ke nilai apapun. Hanya superuser.
+func (h *LicenseHandler) SetStatus(w http.ResponseWriter, r *http.Request) {
+	claims, ok := appmiddleware.UserFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Not authenticated")
+		return
+	}
+	if claims.Role != "superuser" {
+		writeError(w, http.StatusForbidden, "FORBIDDEN", "Only superuser can set status directly")
+		return
+	}
+
+	idStr := chi.URLParam(r, "id")
+	id, err := parseUUID(idStr)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "VALIDATION_FAILED", "Invalid license ID")
+		return
+	}
+
+	var body struct {
+		Status string `json:"status"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "VALIDATION_FAILED", "Invalid request body")
+		return
+	}
+
+	validStatuses := map[string]bool{
+		"pending": true, "active": true, "trial": true,
+		"suspended": true, "expired": true,
+	}
+	if !validStatuses[body.Status] {
+		writeError(w, http.StatusBadRequest, "VALIDATION_FAILED", "Invalid status value")
+		return
+	}
+
+	if err := h.licenseSvc.UpdateStatus(r.Context(), id, body.Status); err != nil {
+		if errors.Is(err, domain.ErrLicenseNotFound) {
+			writeError(w, http.StatusNotFound, "LICENSE_NOT_FOUND", "License tidak ditemukan")
+			return
+		}
+		h.logger.Error("LicenseHandler.SetStatus", zap.Error(err))
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Internal server error")
+		return
+	}
+
+	actorID, _ := parseUUID(claims.Sub)
+	meta, _ := json.Marshal(map[string]string{"status": body.Status})
+	h.auditSvc.Log(r.Context(), "license", id, "status_changed_by_superuser", actorID, claims.Name,
+		json.RawMessage("{}"), meta)
+
+	writeJSON(w, http.StatusOK, map[string]string{"status": body.Status})
+}
+
 // GetAuditLogs menangani GET /api/internal/licenses/{id}/audit.
 // Mengembalikan audit log untuk license tertentu.
 func (h *LicenseHandler) GetAuditLogs(w http.ResponseWriter, r *http.Request) {
@@ -633,8 +696,8 @@ func (h *LicenseHandler) toLicenseDetailDTO(r *http.Request, l *domain.ClientLic
 	if l.InstanceName != nil {
 		dto.InstanceName = *l.InstanceName
 	}
-	if l.ProvisionAPIKey != nil {
-		dto.ProvisionAPIKey = *l.ProvisionAPIKey
+	if l.OTP != nil {
+		dto.OTP = *l.OTP
 	}
 
 	if l.ExpiresAt != nil {
@@ -646,11 +709,15 @@ func (h *LicenseHandler) toLicenseDetailDTO(r *http.Request, l *domain.ClientLic
 		dto.LastPullAt = &s
 	}
 
-	if company, err := h.companySvc.GetByID(r.Context(), l.CompanyID); err == nil {
-		dto.CompanyName = company.Name
+	if l.CompanyID != nil {
+		if company, err := h.companySvc.GetByID(r.Context(), *l.CompanyID); err == nil {
+			dto.CompanyName = company.Name
+		}
 	}
-	if project, err := h.projectSvc.GetByID(r.Context(), l.ProjectID); err == nil {
-		dto.ProjectName = project.Name
+	if l.ProjectID != nil {
+		if project, err := h.projectSvc.GetByID(r.Context(), *l.ProjectID); err == nil {
+			dto.ProjectName = project.Name
+		}
 	}
 	if product, err := h.productSvc.GetByID(r.Context(), l.ProductID); err == nil {
 		dto.ProductName = product.Name
@@ -659,13 +726,13 @@ func (h *LicenseHandler) toLicenseDetailDTO(r *http.Request, l *domain.ClientLic
 	return dto
 }
 
-// GetProvisionKey mengembalikan provision API key untuk sebuah license.
+// GetOTP mengembalikan OTP untuk sebuah license.
 // Hanya superuser yang bisa akses endpoint ini.
-func (h *LicenseHandler) GetProvisionKey(w http.ResponseWriter, r *http.Request) {
+func (h *LicenseHandler) GetOTP(w http.ResponseWriter, r *http.Request) {
 	// Check superuser role
 	user, ok := appmiddleware.UserFromContext(r.Context())
 	if !ok || user.Role != "superuser" {
-		writeError(w, http.StatusForbidden, "FORBIDDEN", "Only superuser can access provision key")
+		writeError(w, http.StatusForbidden, "FORBIDDEN", "Only superuser can access OTP")
 		return
 	}
 
@@ -687,33 +754,33 @@ func (h *LicenseHandler) GetProvisionKey(w http.ResponseWriter, r *http.Request)
 			writeError(w, http.StatusNotFound, "NOT_FOUND", "License not found")
 			return
 		}
-		h.logger.Error("GetProvisionKey: GetByID failed", zap.Error(err))
+		h.logger.Error("GetOTP: GetByID failed", zap.Error(err))
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Internal server error")
 		return
 	}
 
 	response := struct {
-		LicenseID           string `json:"license_id"`
-		LicenseKey          string `json:"license_key"`
-		ProvisionAPIKey     string `json:"provision_api_key"`
-		GeneratedAt         string `json:"generated_at,omitempty"`
-		NextRotationIn      string `json:"next_rotation_in,omitempty"`
+		LicenseID      string `json:"license_id"`
+		LicenseKey     string `json:"license_key"`
+		OTP            string `json:"otp"`
+		GeneratedAt    string `json:"generated_at,omitempty"`
+		NextRotationIn string `json:"next_rotation_in,omitempty"`
 	}{
-		LicenseID:       license.ID.String(),
-		LicenseKey:      license.LicenseKey,
-		ProvisionAPIKey: "",
+		LicenseID:  license.ID.String(),
+		LicenseKey: license.LicenseKey,
+		OTP:        "",
 	}
 
-	// Expose provision key hanya jika ada
-	if license.ProvisionAPIKey != nil {
-		response.ProvisionAPIKey = *license.ProvisionAPIKey
+	// Expose OTP hanya jika ada
+	if license.OTP != nil {
+		response.OTP = *license.OTP
 	}
 
-	// Tampilkan kapan key di-generate
-	if license.ProvisionAPIKeyGeneratedAt != nil {
-		response.GeneratedAt = license.ProvisionAPIKeyGeneratedAt.UTC().Format(time.RFC3339)
+	// Tampilkan kapan OTP di-generate
+	if license.OTPGeneratedAt != nil {
+		response.GeneratedAt = license.OTPGeneratedAt.UTC().Format(time.RFC3339)
 		// Hitung next rotation (30 menit dari generated_at)
-		nextRotation := license.ProvisionAPIKeyGeneratedAt.Add(30 * time.Minute)
+		nextRotation := license.OTPGeneratedAt.Add(30 * time.Minute)
 		if nextRotation.After(time.Now()) {
 			response.NextRotationIn = nextRotation.Sub(time.Now()).String()
 		}

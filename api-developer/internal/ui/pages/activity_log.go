@@ -4,9 +4,11 @@
 package pages
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/flashlab/vernon-license/internal/ui/api"
+	"github.com/flashlab/vernon-license/internal/ui/components"
 	"github.com/flashlab/vernon-license/internal/ui/store"
 	"github.com/maxence-charriere/go-app/v10/pkg/app"
 )
@@ -37,11 +39,11 @@ func (p *ActivityLogPage) loadActivities(ctx app.Context) {
 
 	ctx.Async(func() {
 		client := api.NewClient("", token)
-		type dashboardStats struct {
+		type dashboardResp struct {
 			RecentActivity []activityItem `json:"recent_activity"`
 		}
-		var stats dashboardStats
-		err := client.Get(ctx, "/api/internal/dashboard/stats", &stats)
+		var stats dashboardResp
+		err := client.Get(context.Background(), "/api/internal/dashboard", &stats)
 
 		ctx.Dispatch(func(ctx app.Context) {
 			p.loading = false
@@ -54,73 +56,84 @@ func (p *ActivityLogPage) loadActivities(ctx app.Context) {
 	})
 }
 
-// Render merender halaman activity log.
+// Render merender halaman activity log menggunakan Shell standar.
 func (p *ActivityLogPage) Render() app.UI {
+	if !p.authStore.IsLoggedIn() {
+		return app.Div()
+	}
+
+	return app.Elem("x-shell").
+		Body(
+			&components.Shell{
+				Content: p.renderContent(),
+			},
+		)
+}
+
+// renderContent merender konten utama halaman activity log.
+func (p *ActivityLogPage) renderContent() app.UI {
 	return app.Div().
-		Style("background", "#0F0620").
-		Style("min-height", "100vh").
-		Style("color", "#E2D9F3").
-		Style("font-family", "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto").
+		Style("padding", "32px").
 		Body(
 			// Header
 			app.Div().
-				Style("background", "linear-gradient(135deg, #1A1035 0%, #2D1B4E 100%)").
-				Style("padding", "20px 24px").
-				Style("border-bottom", "1px solid rgba(77,41,117,0.3)").
+				Style("margin-bottom", "24px").
 				Body(
 					app.H1().
-						Style("margin", "0").
+						Style("color", "#E2D9F3").
 						Style("font-size", "24px").
 						Style("font-weight", "700").
+						Style("margin", "0 0 4px").
 						Text("Activity Log"),
+					app.P().
+						Style("color", "#9B8DB5").
+						Style("font-size", "14px").
+						Style("margin", "0").
+						Text("10 aktivitas terakhir dalam sistem"),
 				),
+
+			// Loading state
+			app.If(p.loading, func() app.UI {
+				return app.Div().
+					Style("text-align", "center").
+					Style("padding", "60px").
+					Style("color", "#9B8DB5").
+					Text("Memuat activity log...")
+			}),
+
+			// Error state
+			app.If(p.errMsg != "", func() app.UI {
+				return app.Div().
+					Style("background", "rgba(239,68,68,0.15)").
+					Style("border", "1px solid rgba(239,68,68,0.4)").
+					Style("border-radius", "8px").
+					Style("padding", "12px 16px").
+					Style("color", "#EF4444").
+					Style("font-size", "14px").
+					Style("margin-bottom", "20px").
+					Text(p.errMsg)
+			}),
 
 			// Content
-			app.Div().
-				Style("padding", "24px").
-				Body(
-					// Error message
-					app.If(p.errMsg != "",
-						func() app.UI {
-							return app.Div().
-								Style("background", "rgba(239,68,68,0.15)").
-								Style("border", "1px solid rgba(239,68,68,0.4)").
-								Style("border-radius", "8px").
-								Style("padding", "12px 16px").
-								Style("color", "#EF4444").
-								Style("font-size", "14px").
-								Style("margin-bottom", "20px").
-								Text(p.errMsg)
-						},
-					),
-
-					// Activity list
-					app.If(len(p.activities) > 0,
-						func() app.UI {
-							return app.Div().
-								Style("background", "#1A1035").
-								Style("border", "1px solid rgba(77,41,117,0.3)").
-								Style("border-radius", "12px").
-								Style("padding", "20px").
-								Body(
-									p.renderActivityItems(),
-								)
-						},
-					),
-					app.If(len(p.activities) == 0,
-						func() app.UI {
-							return app.Div().
-								Style("text-align", "center").
-								Style("padding", "40px 20px").
-								Style("color", "#9B8DB5").
-								Body(
-									app.Div().
-										Style("font-size", "16px").
-										Text("Tidak ada activity log."),
-								)
-						},
-					),
-				),
+			app.If(!p.loading && p.errMsg == "", func() app.UI {
+				if len(p.activities) == 0 {
+					return app.Div().
+						Style("background", "#1A1035").
+						Style("border", "1px solid rgba(77,41,117,0.3)").
+						Style("border-radius", "12px").
+						Style("padding", "48px").
+						Style("text-align", "center").
+						Style("color", "#9B8DB5").
+						Style("font-size", "14px").
+						Text("Tidak ada aktivitas tercatat.")
+				}
+				return app.Div().
+					Style("background", "#1A1035").
+					Style("border", "1px solid rgba(77,41,117,0.3)").
+					Style("border-radius", "12px").
+					Style("padding", "20px 24px").
+					Body(p.renderActivityItems())
+			}),
 		)
 }
 
@@ -133,7 +146,7 @@ func (p *ActivityLogPage) renderActivityItems() app.UI {
 			Style("display", "flex").
 			Style("align-items", "flex-start").
 			Style("gap", "12px").
-			Style("padding", "12px 0").
+			Style("padding", "14px 0").
 			Style("border-bottom", "1px solid rgba(77,41,117,0.15)").
 			Body(
 				// Dot indicator
@@ -143,11 +156,10 @@ func (p *ActivityLogPage) renderActivityItems() app.UI {
 					Style("border-radius", "50%").
 					Style("background", "#26B8B0").
 					Style("flex-shrink", "0").
-					Style("margin-top", "5px"),
+					Style("margin-top", "4px"),
 				app.Div().
 					Style("flex", "1").
 					Style("min-width", "0").
-					Style("overflow", "hidden").
 					Body(
 						app.Div().
 							Style("color", "#E2D9F3").
@@ -160,7 +172,7 @@ func (p *ActivityLogPage) renderActivityItems() app.UI {
 						app.Div().
 							Style("color", "#9B8DB5").
 							Style("font-size", "12px").
-							Style("margin-top", "2px").
+							Style("margin-top", "3px").
 							Text(fmt.Sprintf("oleh %s · %s", act.ActorName, act.CreatedAt)),
 					),
 			))

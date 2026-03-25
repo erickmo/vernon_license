@@ -25,78 +25,78 @@ func NewLicenseRepo(db *sqlx.DB) *LicenseRepo {
 
 // licenseRow adalah intermediate struct untuk scan TEXT[] fields dari PostgreSQL.
 type licenseRow struct {
-	ID                         uuid.UUID      `db:"id"`
-	LicenseKey                 string         `db:"license_key"`
-	ProjectID                  uuid.UUID      `db:"project_id"`
-	CompanyID                  uuid.UUID      `db:"company_id"`
-	ProductID                  uuid.UUID      `db:"product_id"`
-	Plan                       string         `db:"plan"`
-	Status                     string         `db:"status"`
-	Modules                    pq.StringArray `db:"modules"`
-	Apps                       pq.StringArray `db:"apps"`
-	ContractAmount             *float64       `db:"contract_amount"`
-	Description                *string        `db:"description"`
-	MaxUsers                   *int           `db:"max_users"`
-	MaxTransPerMonth           *int           `db:"max_trans_per_month"`
-	MaxTransPerDay             *int           `db:"max_trans_per_day"`
-	MaxItems                   *int           `db:"max_items"`
-	MaxCustomers               *int           `db:"max_customers"`
-	MaxBranches                *int           `db:"max_branches"`
-	MaxStorage                 *int           `db:"max_storage"`
-	ExpiresAt                  *time.Time     `db:"expires_at"`
-	InstanceURL                *string        `db:"instance_url"`
-	InstanceName               *string        `db:"instance_name"`
-	ProvisionAPIKey            *string        `db:"provision_api_key"`
-	ProvisionAPIKeyGeneratedAt *time.Time     `db:"provision_api_key_generated_at"`
-	ProvisionAPIKeyPrevious    *string        `db:"provision_api_key_previous"`
-	ProvisionAPIKeyPreviousAt  *time.Time     `db:"provision_api_key_previous_at"`
-	CheckInterval              string         `db:"check_interval"`
-	LastPullAt                 *time.Time     `db:"last_pull_at"`
-	IsRegistered               bool           `db:"is_registered"`
-	ProposalID                 *uuid.UUID     `db:"proposal_id"`
-	CreatedBy                  uuid.UUID      `db:"created_by"`
-	CreatedAt                  time.Time      `db:"created_at"`
-	UpdatedAt                  time.Time      `db:"updated_at"`
-	DeletedAt                  *time.Time     `db:"deleted_at"`
-	ArchivedAt                 *time.Time     `db:"archived_at"`
+	ID                                uuid.UUID      `db:"id"`
+	LicenseKey                        string         `db:"license_key"`
+	ProjectID                         *uuid.UUID     `db:"project_id"`
+	CompanyID                         *uuid.UUID     `db:"company_id"`
+	ProductID                         uuid.UUID      `db:"product_id"`
+	Plan                              string         `db:"plan"`
+	Status                            string         `db:"status"`
+	Modules                           pq.StringArray `db:"modules"`
+	Apps                              pq.StringArray `db:"apps"`
+	ContractAmount                    *float64       `db:"contract_amount"`
+	Description                       *string        `db:"description"`
+	MaxUsers                          *int           `db:"max_users"`
+	MaxTransPerMonth                  *int           `db:"max_trans_per_month"`
+	MaxTransPerDay                    *int           `db:"max_trans_per_day"`
+	MaxItems                          *int           `db:"max_items"`
+	MaxCustomers                      *int           `db:"max_customers"`
+	MaxBranches                       *int           `db:"max_branches"`
+	MaxStorage                        *int           `db:"max_storage"`
+	ExpiresAt                         *time.Time     `db:"expires_at"`
+	InstanceURL                       *string        `db:"instance_url"`
+	InstanceName                      *string        `db:"instance_name"`
+	OTP            *string        `db:"otp"`
+	OTPGeneratedAt *time.Time     `db:"otp_generated_at"`
+	OTPPrevious    *string        `db:"otp_previous"`
+	OTPPreviousAt  *time.Time     `db:"otp_previous_at"`
+	CheckInterval                     string         `db:"check_interval"`
+	LastPullAt                        *time.Time     `db:"last_pull_at"`
+	IsRegistered                      bool           `db:"is_registered"`
+	ProposalID                        *uuid.UUID     `db:"proposal_id"`
+	CreatedBy                         *uuid.UUID     `db:"created_by"`
+	CreatedAt                         time.Time      `db:"created_at"`
+	UpdatedAt                         time.Time      `db:"updated_at"`
+	DeletedAt                         *time.Time     `db:"deleted_at"`
+	ArchivedAt                        *time.Time     `db:"archived_at"`
 }
 
 func (lr *licenseRow) toDomain() *domain.ClientLicense {
 	return &domain.ClientLicense{
-		ID:                         lr.ID,
-		LicenseKey:                 lr.LicenseKey,
-		ProjectID:                  lr.ProjectID,
-		CompanyID:                  lr.CompanyID,
-		ProductID:                  lr.ProductID,
-		Plan:                       lr.Plan,
-		Status:                     lr.Status,
-		Modules:                    []string(lr.Modules),
-		Apps:                       []string(lr.Apps),
-		ContractAmount:             lr.ContractAmount,
-		Description:                lr.Description,
-		MaxUsers:                   lr.MaxUsers,
-		MaxTransPerMonth:           lr.MaxTransPerMonth,
-		MaxTransPerDay:             lr.MaxTransPerDay,
-		MaxItems:                   lr.MaxItems,
-		MaxCustomers:               lr.MaxCustomers,
-		MaxBranches:                lr.MaxBranches,
-		MaxStorage:                 lr.MaxStorage,
-		ExpiresAt:                  lr.ExpiresAt,
-		InstanceURL:                lr.InstanceURL,
-		InstanceName:               lr.InstanceName,
-		ProvisionAPIKey:            lr.ProvisionAPIKey,
-		ProvisionAPIKeyGeneratedAt: lr.ProvisionAPIKeyGeneratedAt,
-		ProvisionAPIKeyPrevious:    lr.ProvisionAPIKeyPrevious,
-		ProvisionAPIKeyPreviousAt:  lr.ProvisionAPIKeyPreviousAt,
-		CheckInterval:              lr.CheckInterval,
-		LastPullAt:                 lr.LastPullAt,
-		IsRegistered:               lr.IsRegistered,
-		ProposalID:                 lr.ProposalID,
-		CreatedBy:                  lr.CreatedBy,
-		CreatedAt:                  lr.CreatedAt,
-		UpdatedAt:                  lr.UpdatedAt,
-		DeletedAt:                  lr.DeletedAt,
-		ArchivedAt:                 lr.ArchivedAt,
+		ID:                                lr.ID,
+		LicenseKey:                        lr.LicenseKey,
+		ProjectID:                         lr.ProjectID,
+		CompanyID:                         lr.CompanyID,
+		ProductID:                         lr.ProductID,
+		Plan:                              lr.Plan,
+		Status:                            lr.Status,
+		Modules:                           []string(lr.Modules),
+		Apps:                              []string(lr.Apps),
+		ContractAmount:                    lr.ContractAmount,
+		Description:                       lr.Description,
+		MaxUsers:                          lr.MaxUsers,
+		MaxTransPerMonth:                  lr.MaxTransPerMonth,
+		MaxTransPerDay:                    lr.MaxTransPerDay,
+		MaxItems:                          lr.MaxItems,
+		MaxCustomers:                      lr.MaxCustomers,
+		MaxBranches:                       lr.MaxBranches,
+		MaxStorage:                        lr.MaxStorage,
+		ExpiresAt:                         lr.ExpiresAt,
+		InstanceURL:                       lr.InstanceURL,
+		InstanceName:                      lr.InstanceName,
+		OTP:            lr.OTP,
+		OTPGeneratedAt: lr.OTPGeneratedAt,
+		OTPPrevious:    lr.OTPPrevious,
+		OTPPreviousAt:  lr.OTPPreviousAt,
+		CheckInterval:                     lr.CheckInterval,
+		LastPullAt:                        lr.LastPullAt,
+		IsRegistered:                      lr.IsRegistered,
+		ProposalID:                        lr.ProposalID,
+		CreatedBy:                         lr.CreatedBy,
+		CreatedAt:                         lr.CreatedAt,
+		UpdatedAt:                         lr.UpdatedAt,
+		DeletedAt:                         lr.DeletedAt,
+		ArchivedAt:                        lr.ArchivedAt,
 	}
 }
 
@@ -105,8 +105,8 @@ const licenseSelectCols = `
 	modules, apps, contract_amount, description,
 	max_users, max_trans_per_month, max_trans_per_day,
 	max_items, max_customers, max_branches, max_storage,
-	expires_at, instance_url, instance_name, provision_api_key,
-	provision_api_key_generated_at, provision_api_key_previous, provision_api_key_previous_at,
+	expires_at, instance_url, instance_name, otp,
+	otp_generated_at, otp_previous, otp_previous_at,
 	check_interval, last_pull_at, is_registered, proposal_id,
 	created_by, created_at, updated_at, deleted_at, archived_at`
 
@@ -136,29 +136,29 @@ func (r *LicenseRepo) FindByKey(ctx context.Context, key string) (*domain.Client
 	return row.toDomain(), nil
 }
 
-// FindByProvisionKey mencari license berdasarkan provision_api_key dan product slug.
-// Hanya current key yang valid (tidak ada grace period dengan previous key).
-func (r *LicenseRepo) FindByProvisionKey(ctx context.Context, provisionKey, productSlug string) (*domain.ClientLicense, error) {
+// FindByOTP mencari license berdasarkan otp dan product slug.
+// Hanya current code yang valid (tidak ada grace period dengan previous code).
+func (r *LicenseRepo) FindByOTP(ctx context.Context, otp, productSlug string) (*domain.ClientLicense, error) {
 	var row licenseRow
 	q := `SELECT
 		cl.id, cl.license_key, cl.project_id, cl.company_id, cl.product_id, cl.plan, cl.status,
 		cl.modules, cl.apps, cl.contract_amount, cl.description,
 		cl.max_users, cl.max_trans_per_month, cl.max_trans_per_day,
 		cl.max_items, cl.max_customers, cl.max_branches, cl.max_storage,
-		cl.expires_at, cl.instance_url, cl.instance_name, cl.provision_api_key,
-		cl.provision_api_key_generated_at, cl.provision_api_key_previous, cl.provision_api_key_previous_at,
+		cl.expires_at, cl.instance_url, cl.instance_name, cl.otp,
+		cl.otp_generated_at, cl.otp_previous, cl.otp_previous_at,
 		cl.check_interval, cl.last_pull_at, cl.is_registered, cl.proposal_id,
 		cl.created_by, cl.created_at, cl.updated_at, cl.deleted_at, cl.archived_at
 	FROM client_licenses cl
 	JOIN products p ON p.id = cl.product_id
-	WHERE cl.provision_api_key = $1
+	WHERE cl.otp = $1
 	  AND p.slug = $2
 	  AND cl.deleted_at IS NULL`
-	if err := r.db.GetContext(ctx, &row, q, provisionKey, productSlug); err != nil {
+	if err := r.db.GetContext(ctx, &row, q, otp, productSlug); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, domain.ErrLicenseNotFound
 		}
-		return nil, fmt.Errorf("LicenseRepo.FindByProvisionKey: %w", err)
+		return nil, fmt.Errorf("LicenseRepo.FindByOTP: %w", err)
 	}
 	return row.toDomain(), nil
 }
@@ -206,6 +206,30 @@ func (r *LicenseRepo) FindExpiring(ctx context.Context, withinDays int) ([]*doma
 	return licenseRowsToDomain(rows), nil
 }
 
+// FindByCompanyAndProduct mencari license berdasarkan company dan product (non-deleted).
+func (r *LicenseRepo) FindByCompanyAndProduct(ctx context.Context, companyID, productID uuid.UUID) (*domain.ClientLicense, error) {
+	const q = `
+		SELECT id, license_key, project_id, company_id, product_id, plan, status,
+		       modules, apps, contract_amount, description,
+		       max_users, max_trans_per_month, max_trans_per_day,
+		       max_items, max_customers, max_branches, max_storage,
+		       expires_at, instance_url, instance_name, otp,
+		       otp_generated_at, otp_previous, otp_previous_at,
+		       check_interval, last_pull_at, is_registered, proposal_id,
+		       created_by, created_at, updated_at, deleted_at, archived_at
+		FROM client_licenses
+		WHERE company_id = $1 AND product_id = $2 AND deleted_at IS NULL
+		LIMIT 1`
+	var row licenseRow
+	if err := r.db.GetContext(ctx, &row, q, companyID, productID); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, domain.ErrLicenseNotFound
+		}
+		return nil, fmt.Errorf("LicenseRepo.FindByCompanyAndProduct: %w", err)
+	}
+	return row.toDomain(), nil
+}
+
 // Create menyimpan license baru ke database.
 func (r *LicenseRepo) Create(ctx context.Context, l *domain.ClientLicense) error {
 	const q = `
@@ -214,8 +238,8 @@ func (r *LicenseRepo) Create(ctx context.Context, l *domain.ClientLicense) error
 		     modules, apps, contract_amount, description,
 		     max_users, max_trans_per_month, max_trans_per_day,
 		     max_items, max_customers, max_branches, max_storage,
-		     expires_at, instance_url, instance_name, provision_api_key,
-		     provision_api_key_generated_at, check_interval, last_pull_at, is_registered, proposal_id,
+		     expires_at, instance_url, instance_name, otp,
+		     otp_generated_at, check_interval, last_pull_at, is_registered, proposal_id,
 		     created_by, created_at, updated_at)
 		VALUES
 		    ($1, $2, $3, $4, $5, $6, $7,
@@ -231,8 +255,8 @@ func (r *LicenseRepo) Create(ctx context.Context, l *domain.ClientLicense) error
 		pq.Array(l.Modules), pq.Array(l.Apps), l.ContractAmount, l.Description,
 		l.MaxUsers, l.MaxTransPerMonth, l.MaxTransPerDay,
 		l.MaxItems, l.MaxCustomers, l.MaxBranches, l.MaxStorage,
-		l.ExpiresAt, l.InstanceURL, l.InstanceName, l.ProvisionAPIKey,
-		l.ProvisionAPIKeyGeneratedAt, l.CheckInterval, l.LastPullAt, l.IsRegistered, l.ProposalID,
+		l.ExpiresAt, l.InstanceURL, l.InstanceName, l.OTP,
+		l.OTPGeneratedAt, l.CheckInterval, l.LastPullAt, l.IsRegistered, l.ProposalID,
 		l.CreatedBy,
 	).Scan(&l.CreatedAt, &l.UpdatedAt); err != nil {
 		return fmt.Errorf("LicenseRepo.Create: %w", err)

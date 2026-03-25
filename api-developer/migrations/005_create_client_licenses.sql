@@ -21,7 +21,10 @@ CREATE TABLE client_licenses (
     expires_at           TIMESTAMPTZ,
     instance_url         TEXT,
     instance_name        TEXT,
-    provision_api_key    TEXT,
+    otp                  TEXT,
+    otp_generated_at     TIMESTAMPTZ,
+    otp_previous         TEXT,
+    otp_previous_at      TIMESTAMPTZ,
     check_interval       VARCHAR(10) NOT NULL DEFAULT '6h',
     last_pull_at         TIMESTAMPTZ,
     is_registered        BOOLEAN NOT NULL DEFAULT FALSE,
@@ -36,7 +39,8 @@ CREATE TABLE client_licenses (
 CREATE INDEX idx_licenses_key ON client_licenses(license_key);
 CREATE INDEX idx_licenses_project ON client_licenses(project_id) WHERE deleted_at IS NULL;
 CREATE INDEX idx_licenses_status ON client_licenses(status) WHERE deleted_at IS NULL;
-CREATE INDEX idx_licenses_provision_key ON client_licenses(provision_api_key) WHERE provision_api_key IS NOT NULL;
+CREATE INDEX idx_licenses_otp ON client_licenses(otp) WHERE otp IS NOT NULL;
+CREATE INDEX idx_licenses_otp_time ON client_licenses(otp, otp_generated_at) WHERE otp IS NOT NULL;
 
 -- +migrate Down
 DROP TABLE IF EXISTS client_licenses;

@@ -1,4 +1,4 @@
-.PHONY: infra-up infra-down dev migrate-up migrate-down tidy test lint build build-wasm build-all
+.PHONY: infra-up infra-down dev dev-wasm migrate-up migrate-down tidy test lint build build-wasm build-all
 
 # ─── Infrastructure ────────────────────────────────────────────────
 infra-up:
@@ -10,6 +10,10 @@ infra-down:
 # ─── Development ───────────────────────────────────────────────────
 dev:
 	go run ./cmd/api
+
+dev-wasm:
+	@chmod +x scripts/watch-wasm.sh
+	@bash scripts/watch-wasm.sh
 
 build:
 	go build -o bin/api ./cmd/api

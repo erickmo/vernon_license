@@ -15,8 +15,8 @@ type APIError struct {
 
 // ErrorResponse adalah format JSON untuk semua response error public API.
 type ErrorResponse struct {
-	Valid  bool     `json:"valid"`
-	Error  APIError `json:"error"`
+	Valid bool     `json:"valid"`
+	Error APIError `json:"error"`
 }
 
 // WriteError menulis error response JSON ke ResponseWriter dengan HTTP status yang diberikan.
