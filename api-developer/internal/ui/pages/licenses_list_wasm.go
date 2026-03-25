@@ -50,6 +50,13 @@ func (p *LicensesListPage) OnNav(ctx app.Context) {
 	p.fetchLicenses(ctx)
 }
 
+// OnMount dipanggil saat halaman di-mount untuk menangani browser back button.
+func (p *LicensesListPage) OnMount(ctx app.Context) {
+	if p.authStore.IsLoggedIn() {
+		p.fetchLicenses(ctx)
+	}
+}
+
 // fetchLicenses mengambil daftar license dari API dan menyimpan ke state.
 func (p *LicensesListPage) fetchLicenses(ctx app.Context) {
 	p.loading = true

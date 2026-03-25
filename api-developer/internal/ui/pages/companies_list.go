@@ -69,6 +69,13 @@ func (p *CompaniesListPage) OnNav(ctx app.Context) {
 	p.fetchCompanies(ctx)
 }
 
+// OnMount dipanggil saat halaman di-mount untuk menangani browser back button.
+func (p *CompaniesListPage) OnMount(ctx app.Context) {
+	if p.authStore.IsLoggedIn() {
+		p.fetchCompanies(ctx)
+	}
+}
+
 // fetchCompanies mengambil daftar companies dari API.
 func (p *CompaniesListPage) fetchCompanies(ctx app.Context) {
 	p.loading = true

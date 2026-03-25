@@ -238,7 +238,7 @@ func (p *LicenseDetailPage) renderContent() app.UI {
 				Style("display", "flex").
 				Style("align-items", "center").
 				Style("gap", "16px").
-				Style("margin-bottom", "24px").
+				Style("margin-bottom", "20px").
 				Body(
 					app.Button().
 						Style("background", "rgba(77,41,117,0.2)").
@@ -291,12 +291,78 @@ func (p *LicenseDetailPage) renderContent() app.UI {
 				},
 			),
 
+			// Header card — license key + status + action (visible sebelum tabs)
+			app.If(!p.loading && p.license != nil,
+				func() app.UI {
+					return p.renderLicenseHeader()
+				},
+			),
+
 			// Content tabs (only when loaded)
 			app.If(!p.loading && p.license != nil,
 				func() app.UI {
 					return p.renderTabs()
 				},
 			),
+		)
+}
+
+// renderLicenseHeader merender header card dengan license key, status badge, dan action buttons.
+// Selalu tampil di atas tabs sehingga user dapat langsung mengubah status.
+func (p *LicenseDetailPage) renderLicenseHeader() app.UI {
+	l := p.license
+	return app.Div().
+		Style("background", "#1A1035").
+		Style("border", "1px solid rgba(77,41,117,0.3)").
+		Style("border-radius", "12px").
+		Style("padding", "20px 24px").
+		Style("margin-bottom", "20px").
+		Body(
+			app.Div().
+				Style("display", "flex").
+				Style("align-items", "flex-start").
+				Style("justify-content", "space-between").
+				Style("flex-wrap", "wrap").
+				Style("gap", "12px").
+				Body(
+					// License key + company
+					app.Div().
+						Body(
+							app.Div().
+								Style("font-size", "11px").
+								Style("color", "#9B8DB5").
+								Style("text-transform", "uppercase").
+								Style("letter-spacing", "0.08em").
+								Style("margin-bottom", "6px").
+								Text("License Key"),
+							app.Div().
+								Style("font-family", "monospace").
+								Style("font-size", "20px").
+								Style("font-weight", "700").
+								Style("color", "#E2D9F3").
+								Style("letter-spacing", "0.04em").
+								Text(l.LicenseKey),
+							app.Div().
+								Style("font-size", "13px").
+								Style("color", "#9B8DB5").
+								Style("margin-top", "4px").
+								Text(l.CompanyName+" · "+l.ProjectName),
+						),
+					// Status + action buttons
+					app.Div().
+						Style("display", "flex").
+						Style("align-items", "center").
+						Style("gap", "12px").
+						Style("flex-wrap", "wrap").
+						Body(
+							statusBadge(l.Status),
+							app.If(p.authStore.HasRole("project_owner"),
+								func() app.UI {
+									return p.renderActionButtons()
+								},
+							),
+						),
+				),
 		)
 }
 
@@ -430,44 +496,6 @@ func (p *LicenseDetailPage) renderTabs() app.UI {
 func (p *LicenseDetailPage) renderInfoTab() app.UI {
 	l := p.license
 
-	// License key header
-	licenseKeyCard := app.Div().
-		Style("background", "#1A1035").
-		Style("border", "1px solid rgba(77,41,117,0.3)").
-		Style("border-radius", "12px").
-		Style("padding", "20px 24px").
-		Style("margin-bottom", "20px").
-		Body(
-			app.Div().
-				Style("font-size", "11px").
-				Style("color", "#9B8DB5").
-				Style("text-transform", "uppercase").
-				Style("letter-spacing", "0.08em").
-				Style("margin-bottom", "8px").
-				Text("License Key"),
-			app.Div().
-				Style("font-family", "monospace").
-				Style("font-size", "22px").
-				Style("font-weight", "700").
-				Style("color", "#E2D9F3").
-				Style("letter-spacing", "0.05em").
-				Text(l.LicenseKey),
-			app.Div().
-				Style("display", "flex").
-				Style("align-items", "center").
-				Style("gap", "12px").
-				Style("margin-top", "16px").
-				Body(
-					statusBadge(l.Status),
-					// Action buttons — project_owner + superuser only
-					app.If(p.authStore.HasRole("project_owner"),
-						func() app.UI {
-							return p.renderActionButtons()
-						},
-					),
-				),
-		)
-
 	// Details grid
 	detailGrid := app.Div().
 		Style("display", "grid").
@@ -537,7 +565,6 @@ func (p *LicenseDetailPage) renderInfoTab() app.UI {
 		)
 
 	return app.Div().Body(
-		licenseKeyCard,
 		detailGrid,
 		constraintsTitle,
 		constraintsGrid,
