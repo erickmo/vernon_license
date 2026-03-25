@@ -55,40 +55,40 @@ type LicenseCreatePage struct {
 	projects  []ProjectOption // filtered by selected company
 
 	// Post-creation state
-	createdLicenseID       string
-	createdProvisionAPIKey string
-	createdLicenseKey      string
+	createdLicenseID              string
+	createdOTP string
+	createdLicenseKey             string
 
-	loading   bool
+	loading    bool
 	submitting bool
-	errMsg    string
-	authStore store.AuthStore
+	errMsg     string
+	authStore  store.AuthStore
 }
 
 // licenseCreateRequest adalah payload untuk POST /api/internal/licenses.
 type licenseCreateRequest struct {
-	CompanyID     string   `json:"company_id"`
-	ProjectID     string   `json:"project_id"`
-	ProductID     string   `json:"product_id"`
-	Plan          string   `json:"plan"`
-	Modules       []string `json:"modules"`
-	Apps          []string `json:"apps"`
-	MaxUsers      *int     `json:"max_users,omitempty"`
-	MaxTransPerMonth *int  `json:"max_trans_per_month,omitempty"`
-	MaxTransPerDay   *int  `json:"max_trans_per_day,omitempty"`
-	MaxItems      *int     `json:"max_items,omitempty"`
-	MaxCustomers  *int     `json:"max_customers,omitempty"`
-	MaxBranches   *int     `json:"max_branches,omitempty"`
-	MaxStorage    *int     `json:"max_storage,omitempty"`
-	ExpiresAt     *string  `json:"expires_at,omitempty"`
-	CheckInterval string   `json:"check_interval"`
+	CompanyID        string   `json:"company_id"`
+	ProjectID        string   `json:"project_id"`
+	ProductID        string   `json:"product_id"`
+	Plan             string   `json:"plan"`
+	Modules          []string `json:"modules"`
+	Apps             []string `json:"apps"`
+	MaxUsers         *int     `json:"max_users,omitempty"`
+	MaxTransPerMonth *int     `json:"max_trans_per_month,omitempty"`
+	MaxTransPerDay   *int     `json:"max_trans_per_day,omitempty"`
+	MaxItems         *int     `json:"max_items,omitempty"`
+	MaxCustomers     *int     `json:"max_customers,omitempty"`
+	MaxBranches      *int     `json:"max_branches,omitempty"`
+	MaxStorage       *int     `json:"max_storage,omitempty"`
+	ExpiresAt        *string  `json:"expires_at,omitempty"`
+	CheckInterval    string   `json:"check_interval"`
 }
 
 // licenseCreateResponse adalah response dari POST /api/internal/licenses.
 type licenseCreateResponse struct {
-	ID              string `json:"id"`
-	LicenseKey      string `json:"license_key"`
-	ProvisionAPIKey string `json:"provision_api_key"`
+	ID                     string `json:"id"`
+	LicenseKey             string `json:"license_key"`
+	OTP string `json:"otp"`
 }
 
 // OnNav dipanggil saat halaman ini di-navigasi.
@@ -104,7 +104,7 @@ func (p *LicenseCreatePage) OnNav(ctx app.Context) {
 	}
 	p.step = 1
 	p.createdLicenseID = ""
-	p.createdProvisionAPIKey = ""
+	p.createdOTP = ""
 	p.createdLicenseKey = ""
 	p.errMsg = ""
 	p.checkInterval = "6h"
@@ -293,15 +293,15 @@ func (p *LicenseCreatePage) onSubmit(ctx app.Context, e app.Event) {
 		ctx.Dispatch(func(ctx app.Context) {
 			p.submitting = false
 			p.createdLicenseID = resp.ID
-			p.createdProvisionAPIKey = resp.ProvisionAPIKey
+			p.createdOTP = resp.OTP
 			p.createdLicenseKey = resp.LicenseKey
 		})
 	})
 }
 
-// onCopyCreatedKey menyalin provision API key hasil create ke clipboard.
+// onCopyCreatedKey menyalin OTP hasil create ke clipboard.
 func (p *LicenseCreatePage) onCopyCreatedKey(ctx app.Context, e app.Event) {
-	app.Window().Get("navigator").Get("clipboard").Call("writeText", p.createdProvisionAPIKey)
+	app.Window().Get("navigator").Get("clipboard").Call("writeText", p.createdOTP)
 }
 
 // onGoToDetail navigasi ke halaman detail license yang baru dibuat.
@@ -822,7 +822,7 @@ func (p *LicenseCreatePage) renderSuccess() app.UI {
 								Style("color", "#9B8DB5").
 								Style("font-size", "14px").
 								Style("margin", "0").
-								Text("Salin Provision API Key dan berikan ke tim client untuk melakukan registrasi."),
+								Text("Salin OTP dan berikan ke tim client untuk melakukan registrasi."),
 						),
 
 					// License key display
@@ -846,7 +846,7 @@ func (p *LicenseCreatePage) renderSuccess() app.UI {
 								Text(p.createdLicenseKey),
 						),
 
-					// Provision API key
+					// OTP
 					app.Div().
 						Style("background", "rgba(38,184,176,0.1)").
 						Style("border", "1px solid rgba(38,184,176,0.3)").
@@ -859,7 +859,7 @@ func (p *LicenseCreatePage) renderSuccess() app.UI {
 								Style("color", "#9B8DB5").
 								Style("text-transform", "uppercase").
 								Style("margin-bottom", "6px").
-								Text("Provision API Key"),
+								Text("OTP"),
 							app.Div().
 								Style("display", "flex").
 								Style("align-items", "center").
@@ -870,7 +870,7 @@ func (p *LicenseCreatePage) renderSuccess() app.UI {
 										Style("font-size", "14px").
 										Style("color", "#26B8B0").
 										Style("word-break", "break-all").
-										Text(p.createdProvisionAPIKey),
+										Text(p.createdOTP),
 									app.Button().
 										Style("background", "rgba(38,184,176,0.15)").
 										Style("border", "1px solid rgba(38,184,176,0.4)").

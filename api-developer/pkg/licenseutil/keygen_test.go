@@ -69,12 +69,12 @@ func TestGenerateLicenseKey_Unique(t *testing.T) {
 	t.Log("Status  : PASS")
 }
 
-func TestGenerateProvisionAPIKey_Length(t *testing.T) {
-	t.Log("=== TEST: GenerateProvisionAPIKey Length ===")
-	t.Log("Goal    : Provision API key harus 32 karakter hex lowercase")
-	t.Log("Flow    : Generate key → cek length 32 → cek format hex lowercase")
+func TestGenerateOTP_Length(t *testing.T) {
+	t.Log("=== TEST: GenerateOTP Length ===")
+	t.Log("Goal    : OTP harus 32 karakter hex lowercase")
+	t.Log("Flow    : Generate OTP → cek length 32 → cek format hex lowercase")
 
-	key, err := licenseutil.GenerateProvisionAPIKey()
+	key, err := licenseutil.GenerateOTP()
 	if err != nil {
 		t.Log("Status  : FAIL")
 		t.Fatalf("unexpected error: %v", err)
@@ -97,23 +97,23 @@ func TestGenerateProvisionAPIKey_Length(t *testing.T) {
 	t.Log("Status  : PASS")
 }
 
-func TestGenerateProvisionAPIKey_Unique(t *testing.T) {
-	t.Log("=== TEST: GenerateProvisionAPIKey Unique ===")
-	t.Log("Goal    : 1000 provision API keys yang digenerate tidak boleh ada duplikat")
-	t.Log("Flow    : Generate 1000 keys → simpan di map → cek tidak ada collision")
+func TestGenerateOTP_Unique(t *testing.T) {
+	t.Log("=== TEST: GenerateOTP Unique ===")
+	t.Log("Goal    : 1000 OTP yang digenerate tidak boleh ada duplikat")
+	t.Log("Flow    : Generate 1000 OTP → simpan di map → cek tidak ada collision")
 
 	const iterations = 1000
 	seen := make(map[string]struct{}, iterations)
 
 	for i := 0; i < iterations; i++ {
-		key, err := licenseutil.GenerateProvisionAPIKey()
+		key, err := licenseutil.GenerateOTP()
 		if err != nil {
 			t.Log("Status  : FAIL")
 			t.Fatalf("iteration %d: unexpected error: %v", i, err)
 		}
 		if _, exists := seen[key]; exists {
 			t.Log("Status  : FAIL")
-			t.Errorf("duplicate provision API key found: %s (iteration %d)", key, i)
+			t.Errorf("duplicate OTP found: %s (iteration %d)", key, i)
 			return
 		}
 		seen[key] = struct{}{}

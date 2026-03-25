@@ -813,8 +813,8 @@ func (p *DashboardPage) renderAPIInfo() app.UI {
 				Style("flex-direction", "column").
 				Style("gap", "10px").
 				Body(
-					renderAPIEndpoint("POST", base+"/api/v1/register", "Client app mendaftarkan diri → mendapatkan license key"),
-					renderAPIEndpoint("GET", base+"/api/v1/validate", "Client app memvalidasi lisensi → returns { valid: true/false }"),
+					renderAPIEndpoint("POST", base+"/api/v1/register", "Client app mendaftarkan diri → mendapatkan license key", "/docs/PUBLIC_API.md#register"),
+					renderAPIEndpoint("GET", base+"/api/v1/validate", "Client app memvalidasi lisensi → returns { valid: true/false }", "/docs/PUBLIC_API.md#validate"),
 				),
 			app.Div().
 				Style("margin-top", "12px").
@@ -827,8 +827,8 @@ func (p *DashboardPage) renderAPIInfo() app.UI {
 		)
 }
 
-// renderAPIEndpoint merender satu baris endpoint.
-func renderAPIEndpoint(method, fullURL, desc string) app.UI {
+// renderAPIEndpoint merender satu baris endpoint dengan documentation link.
+func renderAPIEndpoint(method, fullURL, desc, docURL string) app.UI {
 	methodColor := "#26B8B0"
 	methodBg := "rgba(38,184,176,0.15)"
 	if method == "POST" {
@@ -856,16 +856,39 @@ func renderAPIEndpoint(method, fullURL, desc string) app.UI {
 			app.Div().
 				Style("min-width", "0").
 				Style("overflow", "hidden").
+				Style("flex", "1").
 				Body(
 					app.Div().
-						Style("color", "#E2D9F3").
-						Style("font-size", "13px").
-						Style("font-family", "monospace").
-						Style("font-weight", "500").
-						Style("overflow", "hidden").
-						Style("text-overflow", "ellipsis").
-						Style("white-space", "nowrap").
-						Text(fullURL),
+						Style("display", "flex").
+						Style("align-items", "center").
+						Style("gap", "8px").
+						Body(
+							app.Div().
+								Style("color", "#E2D9F3").
+								Style("font-size", "13px").
+								Style("font-family", "monospace").
+								Style("font-weight", "500").
+								Style("overflow", "hidden").
+								Style("text-overflow", "ellipsis").
+								Style("white-space", "nowrap").
+								Text(fullURL),
+							app.A().
+								Href(docURL).
+								Target("_blank").
+								Rel("noopener noreferrer").
+								Style("color", "#26B8B0").
+								Style("font-size", "12px").
+								Style("cursor", "pointer").
+								Style("text-decoration", "none").
+								Style("font-weight", "600").
+								Style("white-space", "nowrap").
+								Style("flex-shrink", "0").
+								Style("transition", "color 0.2s").
+								Body(
+									app.Raw(`<svg style="width:14px;height:14px;display:inline;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>`),
+									app.Raw("&nbsp;Docs"),
+								),
+						),
 					app.Div().
 						Style("color", "#9B8DB5").
 						Style("font-size", "12px").

@@ -88,6 +88,13 @@ func (p *ProductsListPage) loadProducts(ctx app.Context) {
 	})
 }
 
+// onViewClick navigates ke product detail page.
+func (p *ProductsListPage) onViewClick(id string) func(ctx app.Context, e app.Event) {
+	return func(ctx app.Context, e app.Event) {
+		ctx.Navigate("/products/" + id)
+	}
+}
+
 // onOpenCreate membuka form tambah product.
 func (p *ProductsListPage) onOpenCreate(ctx app.Context, e app.Event) {
 	p.showForm = true
@@ -186,11 +193,12 @@ func (p *ProductsListPage) onSaveProduct(ctx app.Context, e app.Event) {
 			"available_plans":   plans,
 		}
 
+		var updated ProductItem
 		var err error
 		if isEdit {
-			err = client.Put(ctx, "/api/internal/products/"+editID, body, nil)
+			err = client.Put(ctx, "/api/internal/products/"+editID, body, &updated)
 		} else {
-			err = client.Post(ctx, "/api/internal/products", body, nil)
+			err = client.Post(ctx, "/api/internal/products", body, &updated)
 		}
 
 		ctx.Dispatch(func(ctx app.Context) {
@@ -200,7 +208,19 @@ func (p *ProductsListPage) onSaveProduct(ctx app.Context, e app.Event) {
 				return
 			}
 			p.showForm = false
-			p.loadProducts(ctx)
+			p.editID = ""
+			if isEdit {
+				// Update in-place agar UI langsung reflect perubahan tanpa re-fetch.
+				for i, prod := range p.products {
+					if prod.ID == editID {
+						p.products[i] = updated
+						break
+					}
+				}
+			} else {
+				// Tambahkan product baru ke awal list.
+				p.products = append([]ProductItem{updated}, p.products...)
+			}
 		})
 	})
 }
@@ -371,6 +391,8 @@ func (p *ProductsListPage) renderTable() app.UI {
 		rows = append(rows, app.Tr().
 			Style("border-bottom", "1px solid rgba(77,41,117,0.2)").
 			Style("transition", "background 0.15s").
+			Style("cursor", "pointer").
+			OnClick(p.onViewClick(prod.ID)).
 			Body(
 				app.Td().Style("padding", "12px 16px").Style("color", "#E2D9F3").Style("font-size", "14px").Style("font-weight", "500").Text(prod.Name),
 				app.Td().Style("padding", "12px 16px").Style("color", "#9B8DB5").Style("font-size", "13px").Style("font-family", "monospace").Text(prod.Slug),

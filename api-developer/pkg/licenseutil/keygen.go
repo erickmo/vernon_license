@@ -1,4 +1,4 @@
-// Package licenseutil menyediakan utilitas untuk generate license key dan provision API key.
+// Package licenseutil menyediakan utilitas untuk generate license key dan OTP.
 package licenseutil
 
 import (
@@ -26,12 +26,12 @@ func GenerateLicenseKey() (string, error) {
 	return "FL-" + suffix, nil
 }
 
-// GenerateProvisionAPIKey menghasilkan 32-character random hex string
-// yang digunakan sebagai provision API key saat setup license.
-func GenerateProvisionAPIKey() (string, error) {
+// GenerateOTP menghasilkan 32-character random hex string
+// yang digunakan sebagai OTP saat setup license.
+func GenerateOTP() (string, error) {
 	b := make([]byte, 16) // 16 bytes = 32 hex chars
 	if _, err := rand.Read(b); err != nil {
-		return "", fmt.Errorf("GenerateProvisionAPIKey: %w", err)
+		return "", fmt.Errorf("GenerateOTP: %w", err)
 	}
 	return hex.EncodeToString(b), nil
 }

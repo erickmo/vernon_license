@@ -10,10 +10,10 @@ import (
 
 // Product merepresentasikan produk software yang dapat dilisensikan.
 type Product struct {
-	ID          uuid.UUID       `db:"id"`
-	Name        string          `db:"name"`
-	Slug        string          `db:"slug"`
-	Description *string         `db:"description"`
+	ID          uuid.UUID `db:"id"`
+	Name        string    `db:"name"`
+	Slug        string    `db:"slug"`
+	Description *string   `db:"description"`
 	// AvailableModules adalah list modul yang tersedia, format: [{key, name, description}]
 	AvailableModules json.RawMessage `db:"available_modules"`
 	// AvailableApps adalah list aplikasi yang tersedia.

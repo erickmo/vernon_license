@@ -80,23 +80,23 @@ type ProjectDetailPage struct {
 	proposals []ProposalItem
 	auditLogs []AuditItem
 
-	loading    bool
-	errMsg     string
+	loading bool
+	errMsg  string
 
 	// Project form (edit)
-	showEditForm  bool
-	editFormName  string
-	editFormDesc  string
+	showEditForm   bool
+	editFormName   string
+	editFormDesc   string
 	editFormStatus string
-	editFormErr   string
+	editFormErr    string
 	editFormSaving bool
 
 	// Project form (add project — tidak digunakan di detail, untuk kelengkapan)
-	showProjectForm  bool
-	projFormName     string
-	projFormDesc     string
-	projFormErr      string
-	projFormSaving   bool
+	showProjectForm bool
+	projFormName    string
+	projFormDesc    string
+	projFormErr     string
+	projFormSaving  bool
 }
 
 // OnNav dipanggil saat halaman ini di-navigasi.
@@ -479,7 +479,7 @@ func (p *ProjectDetailPage) renderProjectHeader() app.UI {
 										Style("color", "#9B8DB5").
 										Style("font-size", "13px").
 										Style("margin-bottom", "6px").
-										Text("Company: "+p.companyName)
+										Text("Company: " + p.companyName)
 								},
 							),
 							app.If(desc != "",

@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	gojwt "github.com/golang-jwt/jwt/v5"
 	jwtpkg "github.com/flashlab/vernon-license/pkg/jwt"
+	gojwt "github.com/golang-jwt/jwt/v5"
 )
 
 const testSecret = "super-secret-key-for-testing-only"

@@ -10,7 +10,7 @@ import (
 
 // Claims adalah payload JWT untuk Vernon App.
 type Claims struct {
-	Sub  string `json:"sub"`  // user UUID
+	Sub  string `json:"sub"` // user UUID
 	Name string `json:"name"`
 	Role string `json:"role"`
 	jwt.RegisteredClaims

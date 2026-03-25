@@ -187,6 +187,7 @@ func provideRouter(
 
 		// Projects (nested under company + standalone)
 		r.Get("/api/internal/companies/{companyID}/projects", projectHandler.ListByCompany)
+		r.Get("/api/internal/companies/{companyID}/licenses", licenseHandler.ListByCompany)
 		r.Post("/api/internal/companies/{companyID}/projects", projectHandler.Create)
 		r.Get("/api/internal/projects/{id}", projectHandler.GetByID)
 		r.Put("/api/internal/projects/{id}", projectHandler.Update)
@@ -256,7 +257,21 @@ func provideRouter(
 		LoadingLabel:    "Loading Vernon...",
 		Styles:          []string{"/web/app.css"},
 	}
-	r.Handle("/*", wasmHandler)
+	// go-app's ServeHTTP returns 404 jika path tidak cocok dengan route yang terdaftar.
+	// Untuk path frontend (bukan go-app internal assets), kita rewrite URL ke "/" agar
+	// go-app selalu menyajikan WASM shell. Client-side routing (go-app) kemudian membaca
+	// window.location.pathname untuk navigasi yang benar.
+	r.Handle("/*", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		goAppInternal := map[string]bool{
+			"/wasm_exec.js": true, "/app.js": true, "/app.js.gz": true,
+			"/sw.js": true, "/manifest.webmanifest": true, "/robots.txt": true,
+			"/app-worker.js": true,
+		}
+		if !goAppInternal[req.URL.Path] {
+			req.URL.Path = "/"
+		}
+		wasmHandler.ServeHTTP(w, req)
+	}))
 
 	log.Info("Router configured",
 		zap.String("public_api", "/api/v1/{register,validate}"),

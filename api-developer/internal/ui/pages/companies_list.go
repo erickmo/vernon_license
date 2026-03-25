@@ -15,15 +15,16 @@ import (
 
 // CompanyItem adalah representasi company untuk tampilan list.
 type CompanyItem struct {
-	ID       string  `json:"id"`
-	Name     string  `json:"name"`
-	Email    *string `json:"email"`
-	Phone    *string `json:"phone"`
-	Address  *string `json:"address"`
-	PICName  *string `json:"pic_name"`
-	PICEmail *string `json:"pic_email"`
-	PICPhone *string `json:"pic_phone"`
-	Notes    *string `json:"notes"`
+	ID        string  `json:"id"`
+	Name      string  `json:"name"`
+	Email     *string `json:"email"`
+	Phone     *string `json:"phone"`
+	Address   *string `json:"address"`
+	PICName   *string `json:"pic_name"`
+	PICEmail  *string `json:"pic_email"`
+	PICPhone  *string `json:"pic_phone"`
+	Notes     *string `json:"notes"`
+	CreatedAt string  `json:"created_at"`
 }
 
 // companiesResponse adalah format response dari GET /api/internal/companies.
@@ -55,7 +56,7 @@ type CompaniesListPage struct {
 	formSaving bool
 
 	// Delete confirm
-	deleteID   string
+	deleteID      string
 	deleteConfirm bool
 }
 
@@ -110,6 +111,13 @@ func (p *CompaniesListPage) onShowCreateForm(ctx app.Context, e app.Event) {
 	p.formNotes = ""
 	p.formErr = ""
 	p.showForm = true
+}
+
+// onViewClick navigates ke company detail page.
+func (p *CompaniesListPage) onViewClick(id string) func(ctx app.Context, e app.Event) {
+	return func(ctx app.Context, e app.Event) {
+		ctx.Navigate("/companies/" + id)
+	}
 }
 
 // onShowEditForm membuka form edit company.
@@ -465,6 +473,8 @@ func (p *CompaniesListPage) renderRow(c CompanyItem) app.UI {
 	return app.Tr().
 		Style("border-bottom", "1px solid rgba(77,41,117,0.2)").
 		Style("transition", "background 0.15s").
+		Style("cursor", "pointer").
+		OnClick(p.onViewClick(c.ID)).
 		Body(
 			app.Td().
 				Style("padding", "14px 16px").

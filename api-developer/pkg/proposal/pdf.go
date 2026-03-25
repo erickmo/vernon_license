@@ -15,10 +15,10 @@ import (
 
 // PDFData adalah data yang dibutuhkan untuk generate PDF proposal.
 type PDFData struct {
-	Proposal    *domain.Proposal
-	CompanyName string
-	ProjectName string
-	ProductName string
+	Proposal     *domain.Proposal
+	CompanyName  string
+	ProjectName  string
+	ProductName  string
 	ReviewerName string
 	// Vendor info dari config
 	VendorName    string
@@ -486,19 +486,19 @@ func GeneratePDF(data PDFData) ([]byte, error) {
 
 	p := data.Proposal
 	td := proposalTmplData{
-		ProposalID:   p.ID.String(),
-		GeneratedAt:  time.Now().UTC().Format("02 January 2006, 15:04 UTC"),
-		CompanyName:  data.CompanyName,
-		ProjectName:  data.ProjectName,
-		ProductName:  data.ProductName,
-		Plan:         p.Plan,
-		ReviewerName: data.ReviewerName,
-		VendorName:   data.VendorName,
+		ProposalID:    p.ID.String(),
+		GeneratedAt:   time.Now().UTC().Format("02 January 2006, 15:04 UTC"),
+		CompanyName:   data.CompanyName,
+		ProjectName:   data.ProjectName,
+		ProductName:   data.ProductName,
+		Plan:          p.Plan,
+		ReviewerName:  data.ReviewerName,
+		VendorName:    data.VendorName,
 		VendorAddress: data.VendorAddress,
-		VendorPhone:  data.VendorPhone,
-		VendorEmail:  data.VendorEmail,
-		Modules:      strings.Join(p.Modules, ", "),
-		Apps:         strings.Join(p.Apps, ", "),
+		VendorPhone:   data.VendorPhone,
+		VendorEmail:   data.VendorEmail,
+		Modules:       strings.Join(p.Modules, ", "),
+		Apps:          strings.Join(p.Apps, ", "),
 	}
 
 	// Optional numeric fields

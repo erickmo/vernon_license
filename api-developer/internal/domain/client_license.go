@@ -97,6 +97,9 @@ type LicenseRepository interface {
 	// FindExpiring mengembalikan license yang akan expired dalam withinDays hari.
 	FindExpiring(ctx context.Context, withinDays int) ([]*ClientLicense, error)
 
+	// FindByCompany mengembalikan semua license untuk sebuah company.
+	FindByCompany(ctx context.Context, companyID uuid.UUID) ([]*ClientLicense, error)
+
 	// FindByCompanyAndProduct mencari license aktif berdasarkan company dan product.
 	// Digunakan untuk cek duplikasi saat register.
 	FindByCompanyAndProduct(ctx context.Context, companyID, productID uuid.UUID) (*ClientLicense, error)

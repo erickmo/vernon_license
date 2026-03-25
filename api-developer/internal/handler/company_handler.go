@@ -28,15 +28,16 @@ func NewCompanyHandler(svc *service.CompanyService, logger *zap.Logger) *Company
 
 // companyDTO adalah representasi Company yang dikembalikan ke client.
 type companyDTO struct {
-	ID       string  `json:"id"`
-	Name     string  `json:"name"`
-	Email    *string `json:"email"`
-	Phone    *string `json:"phone"`
-	Address  *string `json:"address"`
-	PICName  *string `json:"pic_name"`
-	PICEmail *string `json:"pic_email"`
-	PICPhone *string `json:"pic_phone"`
-	Notes    *string `json:"notes"`
+	ID        string  `json:"id"`
+	Name      string  `json:"name"`
+	Email     *string `json:"email"`
+	Phone     *string `json:"phone"`
+	Address   *string `json:"address"`
+	PICName   *string `json:"pic_name"`
+	PICEmail  *string `json:"pic_email"`
+	PICPhone  *string `json:"pic_phone"`
+	Notes     *string `json:"notes"`
+	CreatedAt string  `json:"created_at"`
 }
 
 // createCompanyRequest adalah body JSON untuk POST /api/internal/companies.
@@ -63,18 +64,19 @@ type updateCompanyRequest struct {
 	Notes    *string `json:"notes"`
 }
 
-// toDTO mengkonversi domain.Company ke companyDTO.
+// toCompanyDTO mengkonversi domain.Company ke companyDTO.
 func toCompanyDTO(c *domain.Company) companyDTO {
 	return companyDTO{
-		ID:       c.ID.String(),
-		Name:     c.Name,
-		Email:    c.Email,
-		Phone:    c.Phone,
-		Address:  c.Address,
-		PICName:  c.PICName,
-		PICEmail: c.PICEmail,
-		PICPhone: c.PICPhone,
-		Notes:    c.Notes,
+		ID:        c.ID.String(),
+		Name:      c.Name,
+		Email:     c.Email,
+		Phone:     c.Phone,
+		Address:   c.Address,
+		PICName:   c.PICName,
+		PICEmail:  c.PICEmail,
+		PICPhone:  c.PICPhone,
+		Notes:     c.Notes,
+		CreatedAt: c.CreatedAt.Format("2006-01-02"),
 	}
 }
 

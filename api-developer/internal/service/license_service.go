@@ -173,6 +173,15 @@ func (s *LicenseService) DirectCreate(ctx context.Context, req CreateLicenseRequ
 	return license, nil
 }
 
+// ListByCompany mengembalikan semua licenses untuk sebuah company.
+func (s *LicenseService) ListByCompany(ctx context.Context, companyID uuid.UUID) ([]*domain.ClientLicense, error) {
+	licenses, err := s.repo.FindByCompany(ctx, companyID)
+	if err != nil {
+		return nil, fmt.Errorf("LicenseService.ListByCompany: %w", err)
+	}
+	return licenses, nil
+}
+
 // CreateFromProposal membuat license dari proposal yang sudah disetujui oleh PO.
 // Constraints disalin dari proposal. Status awal adalah "pending".
 // Dipanggil oleh ProposalService saat proposal di-approve.

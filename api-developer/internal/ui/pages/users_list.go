@@ -81,6 +81,13 @@ func (p *UsersListPage) loadUsers(ctx app.Context) {
 	})
 }
 
+// onViewClick navigates ke user detail page.
+func (p *UsersListPage) onViewClick(id string) func(ctx app.Context, e app.Event) {
+	return func(ctx app.Context, e app.Event) {
+		ctx.Navigate("/users/" + id)
+	}
+}
+
 // onOpenCreate membuka form tambah user.
 func (p *UsersListPage) onOpenCreate(ctx app.Context, e app.Event) {
 	p.showForm = true
@@ -329,6 +336,8 @@ func (p *UsersListPage) renderTable() app.UI {
 
 		rows = append(rows, app.Tr().
 			Style("border-bottom", "1px solid rgba(77,41,117,0.2)").
+			Style("cursor", "pointer").
+			OnClick(p.onViewClick(user.ID)).
 			Body(
 				app.Td().Style("padding", "12px 16px").Body(
 					app.Div().Style("color", "#E2D9F3").Style("font-size", "14px").Style("font-weight", "500").Text(user.Name),

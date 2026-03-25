@@ -25,35 +25,35 @@ func NewProposalRepo(db *sqlx.DB) *ProposalRepo {
 
 // proposalRow adalah intermediate struct untuk scan TEXT[] fields dari PostgreSQL.
 type proposalRow struct {
-	ID        uuid.UUID `db:"id"`
-	ProjectID uuid.UUID `db:"project_id"`
-	CompanyID uuid.UUID `db:"company_id"`
-	ProductID uuid.UUID `db:"product_id"`
-	Version   int       `db:"version"`
-	Status    string    `db:"status"`
-	Modules   pq.StringArray `db:"modules"`
-	Apps      pq.StringArray `db:"apps"`
-	Plan      string    `db:"plan"`
-	MaxUsers        *int            `db:"max_users"`
+	ID               uuid.UUID      `db:"id"`
+	ProjectID        uuid.UUID      `db:"project_id"`
+	CompanyID        uuid.UUID      `db:"company_id"`
+	ProductID        uuid.UUID      `db:"product_id"`
+	Version          int            `db:"version"`
+	Status           string         `db:"status"`
+	Modules          pq.StringArray `db:"modules"`
+	Apps             pq.StringArray `db:"apps"`
+	Plan             string         `db:"plan"`
+	MaxUsers         *int           `db:"max_users"`
 	MaxTransPerMonth *int           `db:"max_trans_per_month"`
-	MaxTransPerDay  *int            `db:"max_trans_per_day"`
-	MaxItems        *int            `db:"max_items"`
-	MaxCustomers    *int            `db:"max_customers"`
-	MaxBranches     *int            `db:"max_branches"`
-	MaxStorage      *int            `db:"max_storage"`
-	ContractAmount  *float64        `db:"contract_amount"`
-	ExpiresAt       *time.Time      `db:"expires_at"`
-	Notes           *string         `db:"notes"`
-	OwnerNotes      *string         `db:"owner_notes"`
-	RejectionReason *string         `db:"rejection_reason"`
-	Changelog       []byte          `db:"changelog"`
-	PDFPath         *string         `db:"pdf_path"`
-	PDFGeneratedAt  *time.Time      `db:"pdf_generated_at"`
-	SubmittedBy     uuid.UUID       `db:"submitted_by"`
-	ReviewedBy      *uuid.UUID      `db:"reviewed_by"`
-	ReviewedAt      *time.Time      `db:"reviewed_at"`
-	CreatedAt       time.Time       `db:"created_at"`
-	UpdatedAt       time.Time       `db:"updated_at"`
+	MaxTransPerDay   *int           `db:"max_trans_per_day"`
+	MaxItems         *int           `db:"max_items"`
+	MaxCustomers     *int           `db:"max_customers"`
+	MaxBranches      *int           `db:"max_branches"`
+	MaxStorage       *int           `db:"max_storage"`
+	ContractAmount   *float64       `db:"contract_amount"`
+	ExpiresAt        *time.Time     `db:"expires_at"`
+	Notes            *string        `db:"notes"`
+	OwnerNotes       *string        `db:"owner_notes"`
+	RejectionReason  *string        `db:"rejection_reason"`
+	Changelog        []byte         `db:"changelog"`
+	PDFPath          *string        `db:"pdf_path"`
+	PDFGeneratedAt   *time.Time     `db:"pdf_generated_at"`
+	SubmittedBy      uuid.UUID      `db:"submitted_by"`
+	ReviewedBy       *uuid.UUID     `db:"reviewed_by"`
+	ReviewedAt       *time.Time     `db:"reviewed_at"`
+	CreatedAt        time.Time      `db:"created_at"`
+	UpdatedAt        time.Time      `db:"updated_at"`
 }
 
 func (pr *proposalRow) toDomain() *domain.Proposal {

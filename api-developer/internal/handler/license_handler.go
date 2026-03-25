@@ -611,6 +611,29 @@ func (h *LicenseHandler) SetStatus(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": body.Status})
 }
 
+// ListByCompany menangani GET /api/internal/companies/{companyID}/licenses.
+func (h *LicenseHandler) ListByCompany(w http.ResponseWriter, r *http.Request) {
+	companyID, err := parseUUID(chi.URLParam(r, "companyID"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "VALIDATION_FAILED", "Invalid company ID")
+		return
+	}
+
+	licenses, err := h.licenseSvc.ListByCompany(r.Context(), companyID)
+	if err != nil {
+		h.logger.Error("LicenseHandler.ListByCompany", zap.Error(err))
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Internal server error")
+		return
+	}
+
+	items := make([]licenseListItemDTO, 0, len(licenses))
+	for _, l := range licenses {
+		item := h.toLicenseListItemDTO(r, l)
+		items = append(items, item)
+	}
+	writeJSON(w, http.StatusOK, items)
+}
+
 // GetAuditLogs menangani GET /api/internal/licenses/{id}/audit.
 // Mengembalikan audit log untuk license tertentu.
 func (h *LicenseHandler) GetAuditLogs(w http.ResponseWriter, r *http.Request) {
@@ -656,15 +679,42 @@ func (h *LicenseHandler) GetAuditLogs(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, dtos)
 }
 
+// toLicenseListItemDTO mengonversi domain.ClientLicense ke licenseListItemDTO dengan lookup nama.
+func (h *LicenseHandler) toLicenseListItemDTO(r *http.Request, l *domain.ClientLicense) licenseListItemDTO {
+	item := licenseListItemDTO{
+		ID:           l.ID.String(),
+		LicenseKey:   l.LicenseKey,
+		Plan:         l.Plan,
+		Status:       l.Status,
+		IsRegistered: l.IsRegistered,
+	}
+	if l.CompanyID != nil {
+		if company, err := h.companySvc.GetByID(r.Context(), *l.CompanyID); err == nil {
+			item.CompanyName = company.Name
+		}
+	}
+	if l.ProjectID != nil {
+		if project, err := h.projectSvc.GetByID(r.Context(), *l.ProjectID); err == nil {
+			item.ProjectName = project.Name
+		}
+	}
+	if product, err := h.productSvc.GetByID(r.Context(), l.ProductID); err == nil {
+		item.ProductName = product.Name
+	}
+	if l.ExpiresAt != nil {
+		s := l.ExpiresAt.UTC().Format(time.RFC3339)
+		item.ExpiresAt = &s
+	}
+	return item
+}
+
 // toLicenseDetailDTO mengonversi domain.ClientLicense ke licenseDetailDTO dengan lookup nama.
 // Lookup error diabaikan — nama akan kosong jika lookup gagal.
 func (h *LicenseHandler) toLicenseDetailDTO(r *http.Request, l *domain.ClientLicense) licenseDetailDTO {
 	dto := licenseDetailDTO{
-		ID:               l.ID.String(),
-		LicenseKey:       l.LicenseKey,
-		CompanyID:        l.CompanyID.String(),
-		ProjectID:        l.ProjectID.String(),
-		Plan:             l.Plan,
+		ID:         l.ID.String(),
+		LicenseKey: l.LicenseKey,
+		Plan:       l.Plan,
 		Status:           l.Status,
 		Modules:          l.Modules,
 		Apps:             l.Apps,
@@ -710,11 +760,13 @@ func (h *LicenseHandler) toLicenseDetailDTO(r *http.Request, l *domain.ClientLic
 	}
 
 	if l.CompanyID != nil {
+		dto.CompanyID = l.CompanyID.String()
 		if company, err := h.companySvc.GetByID(r.Context(), *l.CompanyID); err == nil {
 			dto.CompanyName = company.Name
 		}
 	}
 	if l.ProjectID != nil {
+		dto.ProjectID = l.ProjectID.String()
 		if project, err := h.projectSvc.GetByID(r.Context(), *l.ProjectID); err == nil {
 			dto.ProjectName = project.Name
 		}

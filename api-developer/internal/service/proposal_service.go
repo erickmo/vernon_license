@@ -370,15 +370,15 @@ func (s *ProposalService) Approve(ctx context.Context, id uuid.UUID, ownerNotes 
 
 	// Generate PDF
 	pdfData := proposalpkg.PDFData{
-		Proposal:     proposal,
-		CompanyName:  proposal.CompanyID.String(), // akan di-enrich di handler jika perlu
-		ProjectName:  proposal.ProjectID.String(),
-		ProductName:  proposal.ProductID.String(),
-		ReviewerName: actorName,
-		VendorName:   "Vernon License",
+		Proposal:      proposal,
+		CompanyName:   proposal.CompanyID.String(), // akan di-enrich di handler jika perlu
+		ProjectName:   proposal.ProjectID.String(),
+		ProductName:   proposal.ProductID.String(),
+		ReviewerName:  actorName,
+		VendorName:    "Vernon License",
 		VendorAddress: "",
-		VendorPhone:  "",
-		VendorEmail:  "",
+		VendorPhone:   "",
+		VendorEmail:   "",
 	}
 
 	pdfContent, pdfErr := proposalpkg.GeneratePDF(pdfData)

@@ -54,58 +54,58 @@ func NewProposalHandler(
 
 // proposalListItemDTO adalah representasi ringkas proposal untuk daftar.
 type proposalListItemDTO struct {
-	ID          string   `json:"id"`
-	ProjectID   string   `json:"project_id"`
-	CompanyID   string   `json:"company_id"`
-	ProductID   string   `json:"product_id"`
-	Version     int      `json:"version"`
-	Status      string   `json:"status"`
-	Plan        string   `json:"plan"`
-	CreatedAt   string   `json:"created_at"`
-	UpdatedAt   string   `json:"updated_at"`
+	ID        string `json:"id"`
+	ProjectID string `json:"project_id"`
+	CompanyID string `json:"company_id"`
+	ProductID string `json:"product_id"`
+	Version   int    `json:"version"`
+	Status    string `json:"status"`
+	Plan      string `json:"plan"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
 }
 
 // proposalDetailDTO adalah representasi lengkap proposal termasuk changelog dan nama entitas terkait.
 type proposalDetailDTO struct {
-	ID               string           `json:"id"`
-	ProjectID        string           `json:"project_id"`
-	ProjectName      string           `json:"project_name"`
-	CompanyID        string           `json:"company_id"`
-	CompanyName      string           `json:"company_name"`
-	ProductID        string           `json:"product_id"`
-	ProductName      string           `json:"product_name"`
-	Version          int              `json:"version"`
-	Status           string           `json:"status"`
-	Plan             string           `json:"plan"`
-	Modules          []string         `json:"modules"`
-	Apps             []string         `json:"apps"`
-	MaxUsers         *int             `json:"max_users"`
-	MaxTransPerMonth *int             `json:"max_trans_per_month"`
-	MaxTransPerDay   *int             `json:"max_trans_per_day"`
-	MaxItems         *int             `json:"max_items"`
-	MaxCustomers     *int             `json:"max_customers"`
-	MaxBranches      *int             `json:"max_branches"`
-	MaxStorage       *int             `json:"max_storage"`
-	ContractAmount   *float64         `json:"contract_amount"`
-	ExpiresAt        *string          `json:"expires_at"`
-	Notes            string           `json:"notes"`
-	OwnerNotes       string           `json:"owner_notes"`
-	RejectionReason  string           `json:"rejection_reason"`
-	Changelog        *changelogDTO    `json:"changelog"`
-	PDFPath          string           `json:"pdf_path"`
-	SubmittedByName  string           `json:"submitted_by_name"`
-	ReviewedByName   string           `json:"reviewed_by_name"`
-	ReviewedAt       *string          `json:"reviewed_at"`
-	CreatedAt        string           `json:"created_at"`
-	UpdatedAt        string           `json:"updated_at"`
+	ID               string        `json:"id"`
+	ProjectID        string        `json:"project_id"`
+	ProjectName      string        `json:"project_name"`
+	CompanyID        string        `json:"company_id"`
+	CompanyName      string        `json:"company_name"`
+	ProductID        string        `json:"product_id"`
+	ProductName      string        `json:"product_name"`
+	Version          int           `json:"version"`
+	Status           string        `json:"status"`
+	Plan             string        `json:"plan"`
+	Modules          []string      `json:"modules"`
+	Apps             []string      `json:"apps"`
+	MaxUsers         *int          `json:"max_users"`
+	MaxTransPerMonth *int          `json:"max_trans_per_month"`
+	MaxTransPerDay   *int          `json:"max_trans_per_day"`
+	MaxItems         *int          `json:"max_items"`
+	MaxCustomers     *int          `json:"max_customers"`
+	MaxBranches      *int          `json:"max_branches"`
+	MaxStorage       *int          `json:"max_storage"`
+	ContractAmount   *float64      `json:"contract_amount"`
+	ExpiresAt        *string       `json:"expires_at"`
+	Notes            string        `json:"notes"`
+	OwnerNotes       string        `json:"owner_notes"`
+	RejectionReason  string        `json:"rejection_reason"`
+	Changelog        *changelogDTO `json:"changelog"`
+	PDFPath          string        `json:"pdf_path"`
+	SubmittedByName  string        `json:"submitted_by_name"`
+	ReviewedByName   string        `json:"reviewed_by_name"`
+	ReviewedAt       *string       `json:"reviewed_at"`
+	CreatedAt        string        `json:"created_at"`
+	UpdatedAt        string        `json:"updated_at"`
 }
 
 // changelogDTO adalah DTO untuk changelog proposal.
 type changelogDTO struct {
-	ComparedToVersion int                `json:"compared_to_version"`
-	Summary           string             `json:"summary"`
+	ComparedToVersion int                 `json:"compared_to_version"`
+	Summary           string              `json:"summary"`
 	Changes           []changelogEntryDTO `json:"changes"`
-	Unchanged         []string           `json:"unchanged"`
+	Unchanged         []string            `json:"unchanged"`
 }
 
 // changelogEntryDTO adalah satu baris diff changelog.

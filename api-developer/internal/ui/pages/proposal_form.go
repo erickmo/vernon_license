@@ -14,9 +14,9 @@ import (
 
 // ProductOption adalah representasi ringkas product untuk dropdown.
 type ProductOption struct {
-	ID               string   `json:"id"`
-	Name             string   `json:"name"`
-	AvailablePlans   []string `json:"available_plans"`
+	ID               string         `json:"id"`
+	Name             string         `json:"name"`
+	AvailablePlans   []string       `json:"available_plans"`
 	AvailableModules []ModuleOption `json:"available_modules"`
 	AvailableApps    []AppOption    `json:"available_apps"`
 }
@@ -58,12 +58,12 @@ type ProposalFormPage struct {
 	ownerNotes       string // hanya PO/superuser
 
 	// state
-	products     []ProductOption
-	loading      bool
-	saving       bool
-	errMsg       string
-	isEditMode   bool
-	authStore    store.AuthStore
+	products   []ProductOption
+	loading    bool
+	saving     bool
+	errMsg     string
+	isEditMode bool
+	authStore  store.AuthStore
 
 	// live diff: versi tersimpan (untuk edit mode)
 	savedVersion *ProposalDetail

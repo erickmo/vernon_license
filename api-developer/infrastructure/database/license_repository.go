@@ -206,6 +206,27 @@ func (r *LicenseRepo) FindExpiring(ctx context.Context, withinDays int) ([]*doma
 	return licenseRowsToDomain(rows), nil
 }
 
+// FindByCompany mengembalikan semua license untuk sebuah company.
+func (r *LicenseRepo) FindByCompany(ctx context.Context, companyID uuid.UUID) ([]*domain.ClientLicense, error) {
+	const q = `
+		SELECT id, license_key, project_id, company_id, product_id, plan, status,
+		       modules, apps, contract_amount, description,
+		       max_users, max_trans_per_month, max_trans_per_day,
+		       max_items, max_customers, max_branches, max_storage,
+		       expires_at, instance_url, instance_name, otp,
+		       otp_generated_at, otp_previous, otp_previous_at,
+		       check_interval, last_pull_at, is_registered, proposal_id,
+		       created_by, created_at, updated_at, deleted_at, archived_at
+		FROM client_licenses
+		WHERE company_id = $1 AND deleted_at IS NULL
+		ORDER BY created_at DESC`
+	var rows []licenseRow
+	if err := r.db.SelectContext(ctx, &rows, q, companyID); err != nil {
+		return nil, fmt.Errorf("LicenseRepo.FindByCompany: %w", err)
+	}
+	return licenseRowsToDomain(rows), nil
+}
+
 // FindByCompanyAndProduct mencari license berdasarkan company dan product (non-deleted).
 func (r *LicenseRepo) FindByCompanyAndProduct(ctx context.Context, companyID, productID uuid.UUID) (*domain.ClientLicense, error) {
 	const q = `

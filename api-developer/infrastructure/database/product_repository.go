@@ -144,18 +144,18 @@ func (r *ProductRepo) Delete(ctx context.Context, id uuid.UUID) error {
 // productRow adalah intermediate struct untuk scan TEXT[] dari PostgreSQL.
 // Menggunakan field eksplisit (bukan embedding) untuk menghindari konflik tag db.
 type productRow struct {
-	ID               uuid.UUID       `db:"id"`
-	Name             string          `db:"name"`
-	Slug             string          `db:"slug"`
-	Description      *string         `db:"description"`
-	AvailableModules []byte          `db:"available_modules"`
-	AvailableApps    []byte          `db:"available_apps"`
-	AvailablePlans   pq.StringArray  `db:"available_plans"`
-	BasePricing      []byte          `db:"base_pricing"`
-	IsActive         bool            `db:"is_active"`
-	CreatedAt        time.Time       `db:"created_at"`
-	UpdatedAt        time.Time       `db:"updated_at"`
-	DeletedAt        *time.Time      `db:"deleted_at"`
+	ID               uuid.UUID      `db:"id"`
+	Name             string         `db:"name"`
+	Slug             string         `db:"slug"`
+	Description      *string        `db:"description"`
+	AvailableModules []byte         `db:"available_modules"`
+	AvailableApps    []byte         `db:"available_apps"`
+	AvailablePlans   pq.StringArray `db:"available_plans"`
+	BasePricing      []byte         `db:"base_pricing"`
+	IsActive         bool           `db:"is_active"`
+	CreatedAt        time.Time      `db:"created_at"`
+	UpdatedAt        time.Time      `db:"updated_at"`
+	DeletedAt        *time.Time     `db:"deleted_at"`
 }
 
 func (pr *productRow) toDomain() *domain.Product {

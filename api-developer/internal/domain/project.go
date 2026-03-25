@@ -9,10 +9,10 @@ import (
 
 // Project merepresentasikan proyek yang dimiliki oleh sebuah company.
 type Project struct {
-	ID          uuid.UUID  `db:"id"`
-	CompanyID   uuid.UUID  `db:"company_id"`
-	Name        string     `db:"name"`
-	Description *string    `db:"description"`
+	ID          uuid.UUID `db:"id"`
+	CompanyID   uuid.UUID `db:"company_id"`
+	Name        string    `db:"name"`
+	Description *string   `db:"description"`
 	// Status adalah salah satu dari: "active" | "completed" | "cancelled"
 	Status    string     `db:"status"`
 	CreatedBy uuid.UUID  `db:"created_by"`
