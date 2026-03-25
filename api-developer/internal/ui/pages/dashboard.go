@@ -127,7 +127,7 @@ func (p *DashboardPage) loadStats(ctx app.Context) {
 }
 
 // startOTPCountdown menjalankan countdown timer setiap detik untuk OTP.
-// Ketika timer mencapai 0, secara otomatis refresh OTP.
+// Ketika timer mencapai 0, secara otomatis refresh OTP saja (tanpa refresh halaman).
 func (p *DashboardPage) startOTPCountdown(ctx app.Context) {
 	ctx.After(1*time.Second, func(ctx app.Context) {
 		if p.otpExpiresIn > 0 {
@@ -135,9 +135,46 @@ func (p *DashboardPage) startOTPCountdown(ctx app.Context) {
 			ctx.Update()
 			p.startOTPCountdown(ctx)
 		} else if p.otpExpiresIn == 0 {
-			// Timer expired, refresh OTP automatically
-			p.loadStats(ctx)
+			// Timer expired, refresh OTP code saja via AJAX
+			p.refreshOTPOnly(ctx)
 		}
+	})
+}
+
+// refreshOTPOnly mengambil OTP terbaru tanpa refresh seluruh dashboard.
+func (p *DashboardPage) refreshOTPOnly(ctx app.Context) {
+	token := p.authStore.GetToken()
+
+	ctx.Async(func() {
+		client := api.NewClient("", token)
+		var stats dashboardStats
+		err := client.Get(ctx, "/api/internal/dashboard", &stats)
+
+		ctx.Dispatch(func(ctx app.Context) {
+			if err != nil {
+				// Gagal refresh, coba lagi nanti
+				p.startOTPCountdown(ctx)
+				return
+			}
+
+			// Update hanya OTP data
+			if p.stats != nil {
+				p.stats.OTP = stats.OTP
+			}
+
+			// Calculate OTP expiry countdown
+			if stats.OTP.ExpiresAt != "" {
+				expiresAt, err := time.Parse(time.RFC3339, stats.OTP.ExpiresAt)
+				if err == nil {
+					p.otpExpiresIn = int64(expiresAt.Sub(time.Now()).Seconds())
+					if p.otpExpiresIn < 0 {
+						p.otpExpiresIn = 0
+					}
+					// Start countdown timer for new OTP
+					p.startOTPCountdown(ctx)
+				}
+			}
+		})
 	})
 }
 
