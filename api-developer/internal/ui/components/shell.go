@@ -5,6 +5,7 @@ package components
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/flashlab/vernon-license/internal/ui/api"
@@ -27,10 +28,11 @@ type navItem struct {
 // Shell adalah layout utama dengan top navigation bar yang role-aware.
 type Shell struct {
 	app.Compo
-	Content     app.UI
-	activeRoute string
-	authStore   store.AuthStore
-	notifCount  int
+	Content         app.UI
+	activeRoute     string
+	authStore       store.AuthStore
+	notifCount      int
+	showUserDropdown bool
 }
 
 // OnNav dipanggil saat route berubah. Update activeRoute.
@@ -166,40 +168,78 @@ func (s *Shell) Render() app.UI {
 						Style("scrollbar-width", "none").
 						Body(s.renderNavItems()...),
 
-					// Right side: user info + logout
+					// Right side: avatar + dropdown
 					app.Div().
 						Style("display", "flex").
 						Style("align-items", "center").
-						Style("gap", "12px").
 						Style("flex-shrink", "0").
 						Style("margin-left", "16px").
+						Style("position", "relative").
 						Body(
+							// Avatar circle
 							app.Div().
-								Style("text-align", "right").
-								Body(
-									app.Div().
-										Style("color", "#E2D9F3").
-										Style("font-size", "13px").
-										Style("font-weight", "600").
-										Style("line-height", "1.2").
-										Text(userName),
-									app.Div().
-										Style("color", "#9B8DB5").
-										Style("font-size", "10px").
-										Style("text-transform", "capitalize").
-										Text(userRole),
-								),
-							app.Button().
-								Style("background", "none").
-								Style("border", "1px solid rgba(155,141,181,0.3)").
-								Style("border-radius", "6px").
-								Style("padding", "5px 12px").
-								Style("color", "#9B8DB5").
-								Style("font-size", "12px").
+								Style("width", "34px").
+								Style("height", "34px").
+								Style("border-radius", "50%").
+								Style("background", "linear-gradient(135deg, #4D2975, #26B8B0)").
+								Style("display", "flex").
+								Style("align-items", "center").
+								Style("justify-content", "center").
+								Style("color", "#E2D9F3").
+								Style("font-size", "14px").
+								Style("font-weight", "700").
 								Style("cursor", "pointer").
-								Style("white-space", "nowrap").
-								OnClick(s.onLogout).
-								Text("Keluar"),
+								Style("user-select", "none").
+								Style("flex-shrink", "0").
+								OnClick(s.onToggleUserDropdown).
+								Text(avatarInitial(userName)),
+							// Dropdown menu
+							app.If(s.showUserDropdown,
+								func() app.UI {
+									return app.Div().
+										Style("position", "absolute").
+										Style("top", "calc(100% + 8px)").
+										Style("right", "0").
+										Style("background", "#1A1035").
+										Style("border", "1px solid rgba(77,41,117,0.5)").
+										Style("border-radius", "10px").
+										Style("min-width", "200px").
+										Style("z-index", "200").
+										Style("overflow", "hidden").
+										Body(
+											// User info header
+											app.Div().
+												Style("padding", "14px 16px 10px").
+												Style("border-bottom", "1px solid rgba(77,41,117,0.3)").
+												Body(
+													app.Div().
+														Style("color", "#E2D9F3").
+														Style("font-size", "14px").
+														Style("font-weight", "600").
+														Text(userName),
+													app.Div().
+														Style("color", "#9B8DB5").
+														Style("font-size", "11px").
+														Style("margin-top", "2px").
+														Text(roleLabel(userRole)),
+												),
+											// Logout item
+											app.Div().
+												Style("padding", "10px 16px").
+												Style("color", "#EF4444").
+												Style("font-size", "13px").
+												Style("cursor", "pointer").
+												Style("display", "flex").
+												Style("align-items", "center").
+												Style("gap", "8px").
+												OnClick(s.onLogout).
+												Body(
+													app.Raw(`<svg style="width:14px;height:14px;flex-shrink:0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>`),
+													app.Span().Text("Keluar"),
+												),
+										)
+								},
+							),
 						),
 				),
 
@@ -277,8 +317,34 @@ func (s *Shell) renderNavItem(item navItem, isActive bool) app.UI {
 		)
 }
 
+// onToggleUserDropdown membuka/menutup dropdown user.
+func (s *Shell) onToggleUserDropdown(ctx app.Context, e app.Event) {
+	s.showUserDropdown = !s.showUserDropdown
+}
+
 // onLogout membersihkan auth state dan redirect ke /login.
 func (s *Shell) onLogout(ctx app.Context, e app.Event) {
 	s.authStore.Clear()
 	ctx.Navigate("/login")
+}
+
+// avatarInitial mengambil huruf pertama dari nama user (uppercase).
+func avatarInitial(name string) string {
+	if len(name) == 0 {
+		return "U"
+	}
+	return strings.ToUpper(string([]rune(name)[0]))
+}
+
+// roleLabel mengembalikan label tampilan untuk role.
+func roleLabel(role string) string {
+	switch role {
+	case "superuser":
+		return "Superuser"
+	case "project_owner":
+		return "Project Owner"
+	case "sales":
+		return "Sales"
+	}
+	return role
 }
