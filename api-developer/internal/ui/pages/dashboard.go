@@ -127,12 +127,16 @@ func (p *DashboardPage) loadStats(ctx app.Context) {
 }
 
 // startOTPCountdown menjalankan countdown timer setiap detik untuk OTP.
+// Ketika timer mencapai 0, secara otomatis refresh OTP.
 func (p *DashboardPage) startOTPCountdown(ctx app.Context) {
 	ctx.After(1*time.Second, func(ctx app.Context) {
 		if p.otpExpiresIn > 0 {
 			p.otpExpiresIn--
 			ctx.Update()
 			p.startOTPCountdown(ctx)
+		} else if p.otpExpiresIn == 0 {
+			// Timer expired, refresh OTP automatically
+			p.loadStats(ctx)
 		}
 	})
 }
