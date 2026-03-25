@@ -143,14 +143,17 @@ func (p *LicenseDetailPage) onActivate(ctx app.Context, e app.Event) {
 	ctx.Async(func() {
 		client := api.NewClient("", token)
 		if err := client.Put(context.Background(), "/api/internal/licenses/"+licenseID+"/activate", nil, nil); err != nil {
-			ctx.Dispatch(func(ctx app.Context) {
-				p.errMsg = err.Error()
-			})
+			ctx.Dispatch(func(ctx app.Context) { p.errMsg = err.Error() })
+			return
+		}
+		var detail LicenseDetail
+		if err := client.Get(context.Background(), "/api/internal/licenses/"+licenseID, &detail); err != nil {
+			ctx.Dispatch(func(ctx app.Context) { p.errMsg = err.Error() })
 			return
 		}
 		ctx.Dispatch(func(ctx app.Context) {
 			p.errMsg = ""
-			p.fetchLicense(ctx)
+			p.license = &detail
 		})
 	})
 }
@@ -173,14 +176,17 @@ func (p *LicenseDetailPage) onSuspendConfirm(ctx app.Context, e app.Event) {
 	ctx.Async(func() {
 		client := api.NewClient("", token)
 		if err := client.Put(context.Background(), "/api/internal/licenses/"+licenseID+"/suspend", nil, nil); err != nil {
-			ctx.Dispatch(func(ctx app.Context) {
-				p.errMsg = err.Error()
-			})
+			ctx.Dispatch(func(ctx app.Context) { p.errMsg = err.Error() })
+			return
+		}
+		var detail LicenseDetail
+		if err := client.Get(context.Background(), "/api/internal/licenses/"+licenseID, &detail); err != nil {
+			ctx.Dispatch(func(ctx app.Context) { p.errMsg = err.Error() })
 			return
 		}
 		ctx.Dispatch(func(ctx app.Context) {
 			p.errMsg = ""
-			p.fetchLicense(ctx)
+			p.license = &detail
 		})
 	})
 }
@@ -192,14 +198,17 @@ func (p *LicenseDetailPage) onRenew(ctx app.Context, e app.Event) {
 	ctx.Async(func() {
 		client := api.NewClient("", token)
 		if err := client.Put(context.Background(), "/api/internal/licenses/"+licenseID+"/renew", map[string]any{}, nil); err != nil {
-			ctx.Dispatch(func(ctx app.Context) {
-				p.errMsg = err.Error()
-			})
+			ctx.Dispatch(func(ctx app.Context) { p.errMsg = err.Error() })
+			return
+		}
+		var detail LicenseDetail
+		if err := client.Get(context.Background(), "/api/internal/licenses/"+licenseID, &detail); err != nil {
+			ctx.Dispatch(func(ctx app.Context) { p.errMsg = err.Error() })
 			return
 		}
 		ctx.Dispatch(func(ctx app.Context) {
 			p.errMsg = ""
-			p.fetchLicense(ctx)
+			p.license = &detail
 		})
 	})
 }
@@ -219,14 +228,17 @@ func (p *LicenseDetailPage) onSetStatus(status string) func(app.Context, app.Eve
 			client := api.NewClient("", token)
 			body := map[string]string{"status": status}
 			if err := client.Put(context.Background(), "/api/internal/licenses/"+licenseID+"/status", body, nil); err != nil {
-				ctx.Dispatch(func(ctx app.Context) {
-					p.errMsg = err.Error()
-				})
+				ctx.Dispatch(func(ctx app.Context) { p.errMsg = err.Error() })
+				return
+			}
+			var detail LicenseDetail
+			if err := client.Get(context.Background(), "/api/internal/licenses/"+licenseID, &detail); err != nil {
+				ctx.Dispatch(func(ctx app.Context) { p.errMsg = err.Error() })
 				return
 			}
 			ctx.Dispatch(func(ctx app.Context) {
 				p.errMsg = ""
-				p.fetchLicense(ctx)
+				p.license = &detail
 			})
 		})
 	}
