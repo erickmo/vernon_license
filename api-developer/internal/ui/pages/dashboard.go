@@ -119,6 +119,12 @@ func (p *DashboardPage) Render() app.UI {
 
 // renderContent merender area konten dashboard.
 func (p *DashboardPage) renderContent() app.UI {
+	isSales := p.authStore.GetRole() == "sales"
+	subtitle := "Ringkasan sistem Vernon License"
+	if isSales {
+		subtitle = "Kelola proposal Anda"
+	}
+
 	return app.Div().
 		Style("padding", "32px").
 		Style("max-width", "1200px").
@@ -137,7 +143,7 @@ func (p *DashboardPage) renderContent() app.UI {
 						Style("color", "#9B8DB5").
 						Style("font-size", "14px").
 						Style("margin", "0").
-						Text("Ringkasan sistem Vernon License"),
+						Text(subtitle),
 				),
 
 			// Loading state
@@ -169,13 +175,15 @@ func (p *DashboardPage) renderContent() app.UI {
 			// Konten utama — hanya tampil jika stats sudah ada
 			app.If(!p.loading && p.stats != nil,
 				func() app.UI {
+					if isSales {
+						return p.renderSalesDashboard()
+					}
 					return app.Div().
 						Body(
 							p.renderSummaryCards(),
 							p.renderChartsRow(),
 						p.renderAPIInfo(),
 							p.renderExpiringTable(),
-							p.renderActivityFeed(),
 							p.renderProvisionKeys(),
 						)
 				},
@@ -630,69 +638,6 @@ func renderAPIEndpoint(method, fullURL, desc string) app.UI {
 		)
 }
 
-// renderActivityFeed merender feed aktivitas terbaru.
-func (p *DashboardPage) renderActivityFeed() app.UI {
-	s := p.stats
-	if len(s.RecentActivity) == 0 {
-		return app.Div()
-	}
-
-	items := make([]app.UI, 0, len(s.RecentActivity))
-	for _, act := range s.RecentActivity {
-		act := act
-		items = append(items, app.Div().
-			Style("display", "flex").
-			Style("align-items", "flex-start").
-			Style("gap", "12px").
-			Style("padding", "12px 0").
-			Style("border-bottom", "1px solid rgba(77,41,117,0.15)").
-			Body(
-				// Dot indicator
-				app.Div().
-					Style("width", "8px").
-					Style("height", "8px").
-					Style("border-radius", "50%").
-					Style("background", "#26B8B0").
-					Style("flex-shrink", "0").
-					Style("margin-top", "5px"),
-				app.Div().
-					Style("flex", "1").
-					Style("min-width", "0").
-					Style("overflow", "hidden").
-					Body(
-						app.Div().
-							Style("color", "#E2D9F3").
-							Style("font-size", "13px").
-							Style("font-weight", "500").
-							Style("overflow", "hidden").
-							Style("text-overflow", "ellipsis").
-							Style("white-space", "nowrap").
-							Text(fmt.Sprintf("%s: %s", act.EntityType, act.Action)),
-						app.Div().
-							Style("color", "#9B8DB5").
-							Style("font-size", "12px").
-							Style("margin-top", "2px").
-							Text(fmt.Sprintf("oleh %s · %s", act.ActorName, act.CreatedAt)),
-					),
-			))
-	}
-
-	return app.Div().
-		Style("background", "#1A1035").
-		Style("border", "1px solid rgba(77,41,117,0.3)").
-		Style("border-radius", "12px").
-		Style("padding", "20px").
-		Body(
-			app.Div().
-				Style("color", "#E2D9F3").
-				Style("font-size", "15px").
-				Style("font-weight", "600").
-				Style("margin-bottom", "8px").
-				Text("Recent Activity"),
-			app.Div().Body(items...),
-		)
-}
-
 // renderProvisionKeys merender tabel provision keys — hanya untuk superuser.
 func (p *DashboardPage) renderProvisionKeys() app.UI {
 	if !p.authStore.HasRole("superuser") {
@@ -700,7 +645,38 @@ func (p *DashboardPage) renderProvisionKeys() app.UI {
 	}
 	s := p.stats
 	if len(s.ProvisionKeys) == 0 {
-		return app.Div()
+		return app.Div().
+			Style("background", "#1A1035").
+			Style("border", "1px solid rgba(77,41,117,0.3)").
+			Style("border-radius", "12px").
+			Style("padding", "20px").
+			Style("margin-top", "28px").
+			Body(
+				app.Div().
+					Style("display", "flex").
+					Style("align-items", "center").
+					Style("gap", "10px").
+					Style("margin-bottom", "12px").
+					Body(
+						app.Div().
+							Style("color", "#E2D9F3").
+							Style("font-size", "15px").
+							Style("font-weight", "600").
+							Text("Provision Keys"),
+						app.Span().
+							Style("background", "rgba(239,68,68,0.15)").
+							Style("color", "#EF4444").
+							Style("font-size", "11px").
+							Style("font-weight", "600").
+							Style("padding", "2px 8px").
+							Style("border-radius", "4px").
+							Text("SUPERUSER ONLY"),
+					),
+				app.Div().
+					Style("color", "#9B8DB5").
+					Style("font-size", "13px").
+					Text("Belum ada provision key yang terdaftar."),
+			)
 	}
 
 	rows := make([]app.UI, 0, len(s.ProvisionKeys))
@@ -796,6 +772,82 @@ func (p *DashboardPage) renderProvisionKeys() app.UI {
 									),
 							),
 							app.TBody().Body(rows...),
+						),
+				),
+		)
+}
+
+// renderSalesDashboard merender dashboard sederhana untuk role sales.
+// Hanya menampilkan ringkasan proposal dan quick action.
+func (p *DashboardPage) renderSalesDashboard() app.UI {
+	s := p.stats
+	return app.Div().
+		Body(
+			// Stat cards: total dan pending proposals
+			app.Div().
+				Style("display", "grid").
+				Style("grid-template-columns", "repeat(auto-fit, minmax(220px, 1fr))").
+				Style("gap", "16px").
+				Style("margin-bottom", "28px").
+				Body(
+					p.summaryCard(
+						"Total Proposals",
+						fmt.Sprintf("%d", s.TotalProposals),
+						"Semua proposal yang ada",
+						"#4D2975",
+						"M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z",
+					),
+					p.summaryCard(
+						"Pending Review",
+						fmt.Sprintf("%d", s.PendingProposals),
+						"Menunggu persetujuan",
+						"#E9A800",
+						"M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z",
+					),
+				),
+
+			// Quick actions
+			app.Div().
+				Style("background", "#1A1035").
+				Style("border", "1px solid rgba(77,41,117,0.3)").
+				Style("border-radius", "12px").
+				Style("padding", "24px").
+				Body(
+					app.Div().
+						Style("color", "#E2D9F3").
+						Style("font-size", "15px").
+						Style("font-weight", "600").
+						Style("margin-bottom", "16px").
+						Text("Quick Actions"),
+					app.Div().
+						Style("display", "flex").
+						Style("gap", "12px").
+						Style("flex-wrap", "wrap").
+						Body(
+							app.A().
+								Href("/proposals").
+								Style("display", "inline-block").
+								Style("background", "rgba(77,41,117,0.3)").
+								Style("color", "#E2D9F3").
+								Style("border", "1px solid rgba(77,41,117,0.5)").
+								Style("border-radius", "8px").
+								Style("padding", "10px 20px").
+								Style("font-size", "14px").
+								Style("text-decoration", "none").
+								Style("cursor", "pointer").
+								Text("Lihat Proposals Saya"),
+							app.A().
+								Href("/proposals/create").
+								Style("display", "inline-block").
+								Style("background", "#4D2975").
+								Style("color", "#FFFFFF").
+								Style("border", "none").
+								Style("border-radius", "8px").
+								Style("padding", "10px 20px").
+								Style("font-size", "14px").
+								Style("text-decoration", "none").
+								Style("cursor", "pointer").
+								Text("Buat Proposal Baru"),
 						),
 				),
 		)

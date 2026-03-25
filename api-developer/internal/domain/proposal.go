@@ -133,6 +133,9 @@ type ProposalRepository interface {
 	// FindAll mengembalikan semua proposal.
 	FindAll(ctx context.Context) ([]*Proposal, error)
 
+	// FindBySubmitter mengembalikan semua proposal yang dibuat oleh user tertentu.
+	FindBySubmitter(ctx context.Context, submittedBy uuid.UUID) ([]*Proposal, error)
+
 	// Create menyimpan proposal baru ke database.
 	Create(ctx context.Context, p *Proposal) error
 

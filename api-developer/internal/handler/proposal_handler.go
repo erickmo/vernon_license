@@ -251,9 +251,28 @@ func toProposalDetailDTO(p *domain.Proposal, companyName, projectName, productNa
 }
 
 // List menangani GET /api/internal/proposals.
-// Mengembalikan semua proposals.
+// Sales hanya melihat proposal miliknya; role lain melihat semua.
 func (h *ProposalHandler) List(w http.ResponseWriter, r *http.Request) {
-	proposals, err := h.svc.List(r.Context())
+	claims, ok := appmiddleware.UserFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Not authenticated")
+		return
+	}
+
+	var (
+		proposals []*domain.Proposal
+		err       error
+	)
+	if claims.Role == "sales" {
+		submitterID, pErr := parseUUID(claims.Sub)
+		if pErr != nil {
+			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Invalid user ID")
+			return
+		}
+		proposals, err = h.svc.ListBySubmitter(r.Context(), submitterID)
+	} else {
+		proposals, err = h.svc.List(r.Context())
+	}
 	if err != nil {
 		h.logger.Error("ProposalHandler.List", zap.Error(err))
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Internal server error")
@@ -292,7 +311,14 @@ func (h *ProposalHandler) ListByProject(w http.ResponseWriter, r *http.Request) 
 
 // GetByID menangani GET /api/internal/proposals/{id}.
 // Mengembalikan detail proposal beserta data enrich dari company, project, product, dan user.
+// Sales hanya dapat mengakses proposal yang mereka buat.
 func (h *ProposalHandler) GetByID(w http.ResponseWriter, r *http.Request) {
+	claims, ok := appmiddleware.UserFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Not authenticated")
+		return
+	}
+
 	id, err := parseUUID(chi.URLParam(r, "id"))
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "INVALID_ID", "ID tidak valid")
@@ -307,6 +333,12 @@ func (h *ProposalHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 		}
 		h.logger.Error("ProposalHandler.GetByID", zap.Error(err))
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Internal server error")
+		return
+	}
+
+	// Sales hanya boleh melihat proposal miliknya sendiri.
+	if claims.Role == "sales" && proposal.SubmittedBy.String() != claims.Sub {
+		writeError(w, http.StatusForbidden, "FORBIDDEN", "Anda tidak memiliki akses ke proposal ini")
 		return
 	}
 

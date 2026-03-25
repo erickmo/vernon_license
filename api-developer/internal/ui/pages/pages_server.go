@@ -91,6 +91,12 @@ type NotificationsPage struct{ app.Compo }
 // Render stub untuk server-side.
 func (p *NotificationsPage) Render() app.UI { return app.Div() }
 
+// ActivityLogPage menampilkan activity log sistem.
+type ActivityLogPage struct{ app.Compo }
+
+// Render stub untuk server-side.
+func (p *ActivityLogPage) Render() app.UI { return app.Div() }
+
 // NotFoundPage adalah halaman 404.
 type NotFoundPage struct{ app.Compo }
 

@@ -97,6 +97,16 @@ func (s *ProposalService) List(ctx context.Context) ([]*domain.Proposal, error) 
 	return proposals, nil
 }
 
+// ListBySubmitter mengembalikan semua proposal yang dibuat oleh submitterID.
+// Digunakan untuk role sales yang hanya bisa melihat proposal miliknya.
+func (s *ProposalService) ListBySubmitter(ctx context.Context, submitterID uuid.UUID) ([]*domain.Proposal, error) {
+	proposals, err := s.repo.FindBySubmitter(ctx, submitterID)
+	if err != nil {
+		return nil, fmt.Errorf("ProposalService.ListBySubmitter: %w", err)
+	}
+	return proposals, nil
+}
+
 // ListByProject mengembalikan semua proposal untuk project tertentu.
 func (s *ProposalService) ListByProject(ctx context.Context, projectID uuid.UUID) ([]*domain.Proposal, error) {
 	proposals, err := s.repo.FindByProject(ctx, projectID)

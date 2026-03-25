@@ -155,6 +155,19 @@ func (r *ProposalRepo) FindAll(ctx context.Context) ([]*domain.Proposal, error) 
 	return proposalRowsToDomain(rows), nil
 }
 
+// FindBySubmitter mengembalikan semua proposal yang dibuat oleh submittedBy.
+func (r *ProposalRepo) FindBySubmitter(ctx context.Context, submittedBy uuid.UUID) ([]*domain.Proposal, error) {
+	q := `SELECT ` + proposalSelectCols + `
+		FROM proposals
+		WHERE submitted_by = $1
+		ORDER BY created_at DESC`
+	var rows []proposalRow
+	if err := r.db.SelectContext(ctx, &rows, q, submittedBy); err != nil {
+		return nil, fmt.Errorf("ProposalRepo.FindBySubmitter: %w", err)
+	}
+	return proposalRowsToDomain(rows), nil
+}
+
 // Create menyimpan proposal baru ke database.
 func (r *ProposalRepo) Create(ctx context.Context, p *domain.Proposal) error {
 	const q = `

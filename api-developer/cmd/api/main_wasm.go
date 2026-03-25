@@ -25,6 +25,7 @@ func main() {
 	app.Route("/products", func() app.Composer { return &pages.ProductsListPage{} })
 	app.Route("/users", func() app.Composer { return &pages.UsersListPage{} })
 	app.Route("/notifications", func() app.Composer { return &pages.NotificationsPage{} })
+	app.Route("/logs", func() app.Composer { return &pages.ActivityLogPage{} })
 	app.RouteWithRegexp(".*", func() app.Composer { return &pages.NotFoundPage{} })
 
 	app.RunWhenOnBrowser()

@@ -77,7 +77,7 @@ type DashboardStats struct {
 	TotalRevenue      float64            `json:"total_revenue"`
 	ExpiringLicenses  []ExpiringLicense  `json:"expiring_licenses"`
 	RecentActivity    []ActivityItem     `json:"recent_activity"`
-	ProvisionKeys     []ProvisionKeyItem `json:"provision_keys,omitempty"`
+	ProvisionKeys     []ProvisionKeyItem `json:"provision_keys"`
 }
 
 // GetStats menangani GET /api/internal/dashboard.
@@ -93,6 +93,7 @@ func (h *DashboardHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 	stats := DashboardStats{
 		ExpiringLicenses: []ExpiringLicense{},
 		RecentActivity:   []ActivityItem{},
+		ProvisionKeys:    []ProvisionKeyItem{},
 	}
 
 	// License counts per status
