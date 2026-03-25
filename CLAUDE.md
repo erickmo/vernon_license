@@ -1,102 +1,95 @@
-# Vernon License — Centralized Licensing System
+# Vernon License
 
-## Overview
-
-Vernon License = **license registry + kill switch** untuk semua produk klien Vernon.
-
-- **Public API**: hanya **2 endpoint** — register + validate. Dipanggil oleh client apps.
-- **App** (`app-developer/`): Go WASM PWA — mengelola companies, projects, products, proposals, licenses, users. Bicara langsung ke DB (tidak lewat public API).
-
-### How It Works
-
-1. Client app (e.g. FlashERP instance) **registers itself** → Vernon returns license key
-2. Client app **periodically validates** license → Vernon returns `true/false`
-3. If `false` → client app denies user access
-4. Vernon App (internal) mengelola semua data: companies, projects, proposals, products, users
-5. PO approve proposal → auto-create license. Atau PO direct create license
-6. PO suspend license → next validate call returns `false` → client app blocks users
+License registry + kill switch untuk produk klien Vernon.
 
 ## Stack
+Go 1.23 · Chi v5 · Uber FX · PostgreSQL 17 (port 5433) · sqlx · go-app/v10 (WASM) · JWT HS256
 
-| Layer | Tech |
-|---|---|
-| Backend | Go 1.23 · Chi v5 · Uber FX v1.22 · PostgreSQL 17 · sqlx |
-| Frontend | Go 1.23 · go-app/v10 (WASM) · PWA |
-| Auth (App) | JWT HS256 (24h) — hanya untuk Vernon App, bukan public API |
-
-## Public API (2 endpoints only)
-
+## Structure
 ```
-POST /api/v1/register    ← Client app registers itself → returns license
-GET  /api/v1/validate    ← Client app checks license → returns { valid: true/false }
+api-developer/
+├── cmd/api/main.go          # server entrypoint (!wasm)
+├── cmd/api/app.go           # server-side route reg (!wasm)
+├── cmd/api/main_wasm.go     # WASM entrypoint + client routes
+├── infrastructure/database/ # sqlx repos
+├── internal/
+│   ├── domain/              # structs + repository interfaces
+│   ├── handler/             # internal API handlers (JWT)
+│   ├── publicapi/           # register + validate
+│   ├── service/             # business logic
+│   └── ui/pages/            # WASM pages
+├── migrations/              # 001–016, sql-migrate format
+├── pkg/licenseutil/         # GenerateOTP, GenerateLicenseKey
+└── web/app.wasm
 ```
 
-Semua management lainnya (companies, projects, proposals, products, users, dashboard) **BUKAN** API — dikelola di App yang bicara langsung ke DB.
-
-## Roles (Vernon App)
-
-| Role | Deskripsi |
-|---|---|
-| `superuser` | Full access + manage users + manage products + global audit |
-| `project_owner` | Create license directly, edit/approve proposals, suspend/activate/renew |
-| `sales` | Create proposal → submit for review. Tidak bisa approve atau buat lisensi langsung |
-
-## Architecture Rules (API — 2 public endpoints)
-
-- Stateless — no session, no JWT pada public API
-- Register: validasi `provision_api_key`, return license data
-- Validate: cek `license_key` + status, return boolean
-- Rate limit: 60 req/min per IP
-
-## Architecture Rules (App — internal, talks to DB)
-
-- **Framework**: go-app/v10 (`app.Compo`)
-- **Data access**: langsung ke PostgreSQL via repository layer (bukan lewat API)
-- **Auth**: JWT HS256 untuk login App. Stored di `localStorage`
-- **Routing**: `app.Route()` di `main_wasm.go`
-
-## Key Commands
-
+## Commands
 ```bash
-# API (api-developer/)
-make infra-up       # Start PostgreSQL (port 5433)
-make dev            # Run server (port 8081) — serves public API + App WASM
-make migrate-up     # Apply migrations
-make tidy           # go mod tidy
+make infra-up       # docker postgres port 5433
+make migrate-up     # apply migrations
+make dev            # go run ./cmd/api → :8081
 make test           # go test ./... -v -race
+make build-wasm     # GOARCH=wasm GOOS=js go build -o web/app.wasm ./cmd/api
+make build          # go build -o bin/api ./cmd/api
 ```
 
-## Environment Variables
+## Public API (no auth)
+```
+POST /api/v1/register   { otp, instance_url, instance_name, product_slug }
+GET  /api/v1/validate   ?key=FL-XXXXXXXX
+```
+Rate limit: 60 req/min per IP.
 
-```bash
+## Internal API (Bearer JWT)
+```
+POST /api/internal/auth/login
+GET  /api/internal/companies               POST /api/internal/companies
+GET  /api/internal/licenses                POST /api/internal/licenses
+GET  /api/internal/licenses/{id}
+PUT  /api/internal/licenses/{id}/activate|suspend|renew|status|constraints
+GET  /api/internal/licenses/{id}/otp       (superuser)
+GET  /api/internal/proposals               POST /api/internal/proposals
+PUT  /api/internal/proposals/{id}/submit|approve|reject
+GET  /api/internal/products                POST /api/internal/products
+GET  /api/internal/dashboard
+GET  /api/internal/notifications
+```
+
+## Roles
+| Role | Akses |
+|---|---|
+| `superuser` | Full + products + users + audit |
+| `project_owner` | Create license, approve proposals, suspend/activate/renew |
+| `sales` | Create & submit proposal only |
+
+## Domain
+`Company` → `Project` → `License` + `Proposal`
+
+License status: `pending → active ↔ suspended`, `expired`, `trial`
+
+OTP: per-license (registration auth). Global `otp` table: rotating dashboard display code.
+
+## WASM Routing — Critical Rule
+Parameterized routes HARUS `app.RouteWithRegexp`, bukan `app.Route` (exact match only).
+```go
+// WRONG: app.Route("/licenses/{id}", ...)  ← only matches literal "/licenses/{id}"
+// RIGHT:
+app.RouteWithRegexp(`^/licenses/[^/]+$`, func() app.Composer { return &pages.LicenseDetailPage{} })
+```
+Daftarkan di **dua file**: `cmd/api/app.go` (server) + `cmd/api/main_wasm.go` (client).
+
+## Env
+```
 DATABASE_URL=postgres://vernon:secret@localhost:5433/vernon_license?sslmode=disable
-JWT_SECRET=your-256-bit-secret            # Untuk Vernon App login saja
+JWT_SECRET=<32+ chars>
 PORT=8081
 LOG_LEVEL=info
-STORAGE_PATH=./storage
-LICENSE_CHECK_INTERVAL=6h
-COMPANY_NAME=FlashLab
-COMPANY_ADDRESS=Jl. Teknologi No. 1, Jakarta
-COMPANY_PHONE=+62-21-1234567
-COMPANY_EMAIL=hello@flashlab.id
-COMPANY_LOGO_PATH=assets/flashlab-logo.png
 ```
 
-## Design Tokens
-
-```
-Primary:   #4D2975     Success: #22C55E
-Accent:    #26B8B0     Error:   #EF4444
-Secondary: #E9A800     Warning: #F59E0B
-```
-
-## Detailed Documentation
-
-| Saat mengerjakan... | Baca file |
+## Docs
+| Topic | File |
 |---|---|
-| Public API (register + validate) | `docs/PUBLIC_API.md` |
-| Domain models | `docs/DOMAIN_MODELS.md` |
-| App features, pages | `docs/APP_FEATURES.md` |
-| Database migrations | `docs/MIGRATIONS.md` |
-| Error codes | `docs/ERROR_CODES.md` |
-| Visual reference | `docs/visualization.jsx` |
+| Public API | `docs/PUBLIC_API.md` |
+| Domain models + schema | `docs/DOMAIN_MODELS.md` |
+| App pages + features | `docs/APP_FEATURES.md` |
+| Auth + error codes | `docs/AUTH_AND_FLOWS.md` |

@@ -1,184 +1,58 @@
 # Domain Models
 
-## Company
-
-| Field | Type | Keterangan |
-|---|---|---|
-| `id` | UUID | PK |
-| `name` | string | Nama perusahaan |
-| `email` | string? | Email kontak |
-| `phone` | string? | |
-| `address` | text? | |
-| `pic_name` | string? | Person in charge |
-| `pic_email` | string? | |
-| `pic_phone` | string? | |
-| `notes` | text? | |
-| `created_by` | UUID | FK users |
-| `created_at` | timestamptz | |
-| `updated_at` | timestamptz | |
-| `deleted_at` | time? | Soft delete |
+## Relationships
+`Company` 1→N `Project` 1→N `License` + `Proposal`
 
 ---
+
+## Company
+`id, name, email?, phone?, address?, pic_name?, pic_email?, pic_phone?, notes?, created_by, created_at, updated_at, deleted_at`
 
 ## Project
+`id, company_id, name, description?, status(active|completed|cancelled), created_by, created_at, updated_at, deleted_at`
 
-Groups licenses + proposals under one engagement.
+## License (client_licenses)
+| Field | Notes |
+|---|---|
+| `license_key` | `FL-XXXXXXXX`, auto-generated |
+| `project_id?` | nullable — register flow tidak assign project |
+| `company_id?` | nullable — set saat register |
+| `product_id` | FK products |
+| `status` | `pending|active|trial|suspended|expired` |
+| `otp` | registration auth code (json:"-"), per-license |
+| `otp_generated_at` | kapan OTP dibuat |
+| `is_registered` | true setelah client call /register |
+| `instance_url?, instance_name?` | set saat register |
+| `check_interval` | `1h|6h|24h` default `6h` |
+| `last_pull_at?` | timestamp validate terakhir |
+| `proposal_id?` | NULL jika direct create |
+| `modules[], apps[]` | TEXT[] |
+| `max_users?, max_trans_per_month?, max_trans_per_day?` | constraints |
+| `max_items?, max_customers?, max_branches?, max_storage?` | constraints |
+| `contract_amount?, expires_at?` | |
 
-| Field | Type | Keterangan |
-|---|---|---|
-| `id` | UUID | PK |
-| `company_id` | UUID | FK companies |
-| `name` | string | |
-| `description` | text? | |
-| `status` | string | `active` \| `completed` \| `cancelled` |
-| `created_by` | UUID | FK users |
-| `created_at` | timestamptz | |
-| `updated_at` | timestamptz | |
-| `deleted_at` | time? | |
+**Status flow**: `pending → active ↔ suspended`, `active → expired`, `trial → active`
 
-Relationships: Company 1→N Projects, Project 1→N Licenses, Project 1→N Proposals
+## Product
+`id, name, slug(unique), description?, available_modules(jsonb), available_apps(jsonb), available_plans(text[]), base_pricing(jsonb), is_active`
 
----
+## Proposal
+`id, project_id, company_id, product_id, version(auto), status(draft|submitted|approved|rejected)`
+`modules[], apps[], plan, constraints (same as license), contract_amount?, expires_at?`
+`notes?, owner_notes?, rejection_reason?, changelog(jsonb)?`
+`submitted_by, reviewed_by?, reviewed_at?, pdf_path?`
 
-## License
+**Approval → auto-create license**
 
-On/off toggle. Client app registers → gets license_key → periodically validates.
+## OTP (global table)
+`id, code(unique), is_active, created_at, expires_at`
+Used for dashboard rotating registration display code. Separate from per-license `otp` column.
 
-| Field | Type | Keterangan |
-|---|---|---|
-| `id` | UUID | PK |
-| `license_key` | string | `FL-XXXXXXXX` (auto-generate, unique) |
-| `project_id` | UUID | FK projects |
-| `company_id` | UUID | FK companies (denormalized) |
-| `product_id` | UUID | FK products |
-| `plan` | string | `saas` \| `dedicated` |
-| `status` | string | `active` \| `trial` \| `suspended` \| `expired` \| `pending` |
-| `modules` | TEXT[] | Fitur aktif (internal tracking) |
-| `apps` | TEXT[] | Apps aktif (internal tracking) |
-| `contract_amount` | decimal? | Nilai kontrak |
-| `description` | text? | |
-| `max_users` | int? | Batas pengguna |
-| `max_trans_per_month` | int? | |
-| `max_trans_per_day` | int? | |
-| `max_items` | int? | |
-| `max_customers` | int? | |
-| `max_branches` | int? | |
-| `max_storage` | int? | MB |
-| `expires_at` | time? | |
-| `instance_url` | string? | URL deployment (set saat register) |
-| `instance_name` | string? | Nama instance (set saat register) |
-| `provision_api_key` | string? | Key untuk register auth (json `"-"`) |
-| `check_interval` | string | `1h` \| `6h` \| `24h` (default `6h`) |
-| `last_pull_at` | time? | Timestamp validate terakhir |
-| `is_registered` | bool | Client app sudah call register |
-| `proposal_id` | UUID? | FK proposals (NULL jika direct create) |
-| `created_by` | UUID | FK users |
-| `created_at` | timestamptz | |
-| `updated_at` | timestamptz | |
-| `deleted_at` | time? | |
-| `archived_at` | time? | |
+## AuditLog
+`id, entity_type, entity_id, action, actor_id, actor_name, changes(jsonb), metadata(jsonb), created_at`
 
-### Status Flow
-```
-pending   → active       (PO approve — atau auto jika pre-approved)
-pending   → trial        (PO set trial)
-active    ←→ suspended   (PO toggle)
-active    → expired      (by expires_at or manual)
-trial     → active       (PO approve)
-expired   → active       (PO renew)
-any       → archived
-```
+## Notification
+`id, user_id, type, title, message, entity_type?, entity_id?, is_read, created_at`
 
-### Validate Logic (public API)
-```
-valid = true  IF status IN (active) AND (expires_at IS NULL OR expires_at > now)
-valid = true  IF status IN (trial) AND approved
-valid = false IF status IN (suspended, expired, pending)
-```
-
-### Two Creation Paths
-1. **Via Proposal**: Sales → PO approve → auto-create license (status: pending until client registers, or active if pre-provisioned)
-2. **Direct**: PO creates in Vernon App (sets provision_api_key, client registers later)
-
-### Registration Flow
-1. PO creates license in Vernon App → sets `provision_api_key` → gives key to client
-2. Client app calls `POST /api/v1/register` with the key
-3. Vernon matches by `provision_api_key` + `product_slug`
-4. Sets `instance_url`, `instance_name`, `is_registered = true`
-5. Returns `license_key` + `valid` status
-6. Client uses `license_key` for periodic `GET /api/v1/validate`
-
----
-
-## Product (superuser CRUD — internal)
-
-| Field | Type | Keterangan |
-|---|---|---|
-| `id` | UUID | PK |
-| `name` | string | |
-| `slug` | string | Unique (used in register) |
-| `description` | text? | |
-| `available_modules` | JSONB | `[{ key, name, description }]` |
-| `available_apps` | JSONB | `[{ key, name, description }]` |
-| `available_plans` | TEXT[] | `["saas", "dedicated"]` |
-| `base_pricing` | JSONB | `{ "saas": { base_price, per_user_price, currency } }` |
-| `is_active` | bool | |
-| `created_at` | timestamptz | |
-| `updated_at` | timestamptz | |
-| `deleted_at` | time? | |
-
----
-
-## Proposal (versioned + changelog — internal)
-
-| Field | Type | Keterangan |
-|---|---|---|
-| `id` | UUID | PK |
-| `project_id` | UUID | FK projects |
-| `company_id` | UUID | FK companies |
-| `product_id` | UUID | FK products |
-| `version` | int | Auto-increment per project+product |
-| `status` | string | `draft` \| `submitted` \| `approved` \| `rejected` |
-| `modules` | TEXT[] | |
-| `apps` | TEXT[] | |
-| `plan` | string | |
-| `max_users` | int? | |
-| `max_trans_per_month` | int? | |
-| `max_trans_per_day` | int? | |
-| `max_items` | int? | |
-| `max_customers` | int? | |
-| `max_branches` | int? | |
-| `max_storage` | int? | |
-| `contract_amount` | decimal? | |
-| `expires_at` | time? | |
-| `notes` | text? | Dari sales |
-| `owner_notes` | text? | Dari PO |
-| `rejection_reason` | text? | |
-| `changelog` | JSONB? | Auto-computed diff vs previous |
-| `pdf_path` | string? | |
-| `pdf_generated_at` | time? | |
-| `submitted_by` | UUID | |
-| `reviewed_by` | UUID? | |
-| `reviewed_at` | time? | |
-| `created_at` | timestamptz | |
-| `updated_at` | timestamptz | |
-
-### Approval → auto-create license + generate PDF
-PO can edit submitted proposals before approving.
-
-### Changelog (auto-computed)
-```json
-{ "compared_to_version": 1, "summary": "...", "changes": [...], "unchanged": [...] }
-```
-
----
-
-## User, AuditLog, Notification
-
-Same as before — see `docs/MIGRATIONS.md` for schemas. All managed internally via App.
-
-### Audit Actions
-`license_created` · `license_updated` · `status_changed` · `license_renewed` · `client_registered` · `proposal_created` · `proposal_submitted` · `proposal_edited_by_owner` · `proposal_approved` · `proposal_rejected` · `product_created` · `product_updated` · `company_created` · `project_created` · `user_created` · `user_login`
-
-### Notification Types
-`proposal_submitted` → PO · `proposal_approved` → sales · `proposal_rejected` → sales · `proposal_edited` → sales · `license_expiring_30d` → PO+sales · `license_expiring_7d` → PO+sales · `license_expired` → PO · `client_registered` → PO (new client registered)
+## User
+`id, name, email(unique), password_hash, role(superuser|project_owner|sales), is_active, created_at, updated_at`
