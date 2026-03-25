@@ -147,7 +147,6 @@ func (p *NotificationsPage) renderContent() app.UI {
 
 	return app.Div().
 		Style("padding", "32px").
-		Style("max-width", "720px").
 		Body(
 			// Header
 			app.Div().

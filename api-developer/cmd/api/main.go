@@ -191,7 +191,11 @@ func provideRouter(
 		r.Put("/api/internal/licenses/{id}/suspend", licenseHandler.Suspend)
 		r.Put("/api/internal/licenses/{id}/renew", licenseHandler.Renew)
 		r.Put("/api/internal/licenses/{id}/constraints", licenseHandler.UpdateConstraints)
-		r.Get("/api/internal/licenses/{id}/audit", licenseHandler.GetAuditLogs)
+		// Audit logs hanya bisa diakses oleh superuser
+		r.Group(func(r chi.Router) {
+			r.Use(appmiddleware.RequireRole("superuser"))
+			r.Get("/api/internal/licenses/{id}/audit", licenseHandler.GetAuditLogs)
+		})
 		r.Get("/api/internal/projects/{projectID}/licenses", licenseHandler.ListByProject)
 
 		// Proposals

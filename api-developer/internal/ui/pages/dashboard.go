@@ -132,16 +132,20 @@ func (p *DashboardPage) startOTPCountdown(ctx app.Context) {
 	ctx.After(1*time.Second, func(ctx app.Context) {
 		if p.otpExpiresIn > 0 {
 			p.otpExpiresIn--
-			ctx.Update()
+			// Only update UI every 10 seconds or in last minute to reduce re-renders
+			if p.otpExpiresIn%10 == 0 || p.otpExpiresIn < 60 {
+				ctx.Update()
+			}
 			p.startOTPCountdown(ctx)
 		} else if p.otpExpiresIn == 0 {
-			// Timer expired, refresh OTP code saja via AJAX
+			// Timer expired, refresh OTP code saja via AJAX (silent)
 			p.refreshOTPOnly(ctx)
 		}
 	})
 }
 
 // refreshOTPOnly mengambil OTP terbaru tanpa refresh seluruh dashboard.
+// Silent refresh - tidak ada loading state atau error message yang ditampilkan.
 func (p *DashboardPage) refreshOTPOnly(ctx app.Context) {
 	token := p.authStore.GetToken()
 
@@ -152,12 +156,12 @@ func (p *DashboardPage) refreshOTPOnly(ctx app.Context) {
 
 		ctx.Dispatch(func(ctx app.Context) {
 			if err != nil {
-				// Gagal refresh, coba lagi nanti
+				// Silent fail - coba lagi nanti tanpa menampilkan error
 				p.startOTPCountdown(ctx)
 				return
 			}
 
-			// Update hanya OTP data
+			// Update hanya OTP data (tidak ada loading state)
 			if p.stats != nil {
 				p.stats.OTP = stats.OTP
 			}
@@ -170,7 +174,8 @@ func (p *DashboardPage) refreshOTPOnly(ctx app.Context) {
 					if p.otpExpiresIn < 0 {
 						p.otpExpiresIn = 0
 					}
-					// Start countdown timer for new OTP
+					// Update UI dan restart countdown
+					ctx.Update()
 					p.startOTPCountdown(ctx)
 				}
 			}
@@ -202,7 +207,6 @@ func (p *DashboardPage) renderContent() app.UI {
 
 	return app.Div().
 		Style("padding", "32px").
-		Style("max-width", "1200px").
 		Body(
 			// Header
 			app.Div().

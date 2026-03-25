@@ -115,11 +115,13 @@ func (p *LicenseDetailPage) fetchAuditLogs(ctx app.Context) {
 		if err := client.Get(context.Background(), "/api/internal/licenses/"+licenseID+"/audit", &logs); err != nil {
 			ctx.Dispatch(func(ctx app.Context) {
 				p.auditLogs = nil
+				p.errMsg = err.Error()
 			})
 			return
 		}
 		ctx.Dispatch(func(ctx app.Context) {
 			p.auditLogs = logs
+			p.errMsg = ""
 		})
 	})
 }
@@ -749,6 +751,18 @@ func (p *LicenseDetailPage) renderRegistrationTab() app.UI {
 
 // renderActivityTab merender tab Activity (audit log timeline).
 func (p *LicenseDetailPage) renderActivityTab() app.UI {
+	// Show error message if failed to fetch
+	if p.errMsg != "" {
+		return app.Div().
+			Style("background", "rgba(239,68,68,0.15)").
+			Style("border", "1px solid rgba(239,68,68,0.4)").
+			Style("border-radius", "8px").
+			Style("padding", "20px 24px").
+			Style("color", "#EF4444").
+			Style("font-size", "14px").
+			Style("text-align", "center").
+			Text(p.errMsg)
+	}
 	if len(p.auditLogs) == 0 {
 		return app.Div().
 			Style("text-align", "center").

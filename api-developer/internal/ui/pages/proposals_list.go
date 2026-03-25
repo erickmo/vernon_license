@@ -107,8 +107,6 @@ func (p *ProposalsListPage) Render() app.UI {
 func (p *ProposalsListPage) renderContent() app.UI {
 	return app.Div().
 		Style("padding", "32px").
-		Style("max-width", "960px").
-		Style("margin", "0 auto").
 		Body(
 			// Header
 			app.Div().
