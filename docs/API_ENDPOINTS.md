@@ -280,7 +280,7 @@ Header: Origin: https://mycompany.flasherp.id
 3. Bandingkan **host** setelah normalisasi (case-insensitive)
 4. Tidak cocok → `403 Forbidden`
 
-**Response (safe — tanpa `provision_api_key`):**
+**Response (safe — tanpa `client_registration_code`):**
 ```json
 {
   "data": {

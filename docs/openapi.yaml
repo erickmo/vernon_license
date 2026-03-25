@@ -144,7 +144,7 @@ components:
           format: date-time
         is_registered:
           type: boolean
-        provision_api_key:
+        client_registration_code:
           type: string
         check_interval:
           type: string
@@ -251,7 +251,7 @@ paths:
                 - product_slug
                 - instance_url
                 - instance_name
-                - provision_api_key
+                - client_registration_code
               properties:
                 product_slug:
                   type: string
@@ -259,7 +259,7 @@ paths:
                   type: string
                 instance_name:
                   type: string
-                provision_api_key:
+                client_registration_code:
                   type: string
       responses:
         '201':

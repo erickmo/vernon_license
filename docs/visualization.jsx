@@ -141,7 +141,7 @@ function PushTab() {
       <div className="rounded-xl p-4 border" style={{ background: C.g50, borderColor: C.g200 }}>
         <div className="text-xs font-bold mb-2" style={{ color: C.g700 }}>Push Payload</div>
         <pre className="text-xs p-3 rounded-lg overflow-x-auto" style={{ background: C.dark, color: C.accent, fontFamily: "monospace" }}>{`POST {instance_url}/api/v1/vernon/sync
-Header: X-API-Key: {provision_api_key}
+Header: X-API-Key: {client_registration_code}
 
 {
   "license_key": "FL-A1B2C3D4",
@@ -244,7 +244,7 @@ Header: X-API-Key: {key}
   "reason": "suspended",
   "updated_at": "2026-03-24T..."
 }`}</pre>
-            <div className="text-xs" style={{ color: C.g500 }}>Secured by provision_api_key. Client must implement this endpoint.</div>
+            <div className="text-xs" style={{ color: C.g500 }}>Secured by client_registration_code. Client must implement this endpoint.</div>
           </div>
         </div>
       </div>
@@ -265,7 +265,7 @@ Header: X-API-Key: {key}
           <div>
             <div className="text-xs font-bold mb-1" style={{ color: C.success }}>Kept ✓</div>
             <div className="space-y-1">
-              {["License key as identifier", "check_interval (configurable)", "provision_api_key for push auth", "Push on change (instant)", "Pull as backup (periodic)", "Retry + notification on push failure"].map((x, i) => (
+              {["License key as identifier", "check_interval (configurable)", "client_registration_code for push auth", "Push on change (instant)", "Pull as backup (periodic)", "Retry + notification on push failure"].map((x, i) => (
                 <div key={i} className="text-xs flex items-center gap-1" style={{ color: C.g500 }}>
                   <span style={{ color: C.success }}>✓</span> {x}
                 </div>

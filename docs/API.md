@@ -103,7 +103,7 @@ Semua error menggunakan format JSON yang konsisten:
 | `FORBIDDEN` | Role tidak memiliki akses |
 | `NOT_FOUND` | Resource tidak ditemukan |
 | `LICENSE_NOT_FOUND` | License key tidak ditemukan |
-| `INVALID_API_KEY` | `provision_api_key` tidak valid |
+| `INVALID_API_KEY` | `client_registration_code` tidak valid |
 | `ALREADY_REGISTERED` | License sudah pernah di-register |
 | `INVALID_CREDENTIALS` | Email atau password salah |
 | `USER_NOT_FOUND` | User tidak ditemukan |
@@ -133,7 +133,7 @@ Mendaftarkan client app (instance) ke Vernon License. Dipanggil **sekali** saat 
   "product_slug":       "flasherp",
   "instance_url":       "https://mycompany.flasherp.id",
   "instance_name":      "PT Maju Bersama",
-  "provision_api_key":  "prov_xxxxxxxxxxxx"
+  "client_registration_code":  "prov_xxxxxxxxxxxx"
 }
 ```
 
@@ -142,7 +142,7 @@ Mendaftarkan client app (instance) ke Vernon License. Dipanggil **sekali** saat 
 | `product_slug` | string | Ya | Slug produk (contoh: `flasherp`) |
 | `instance_url` | string | Ya | URL instance client |
 | `instance_name` | string | Ya | Nama instance / perusahaan |
-| `provision_api_key` | string | Ya | Kunci provisioning dari Vernon App |
+| `client_registration_code` | string | Ya | Kunci provisioning dari Vernon App |
 
 **Response 201 Created:**
 ```json
@@ -160,7 +160,7 @@ Mendaftarkan client app (instance) ke Vernon License. Dipanggil **sekali** saat 
 | Status | Code | Kondisi |
 |---|---|---|
 | `400` | `VALIDATION_FAILED` | Field kosong |
-| `403` | `INVALID_API_KEY` | `provision_api_key` tidak cocok dengan `product_slug` |
+| `403` | `INVALID_API_KEY` | `client_registration_code` tidak cocok dengan `product_slug` |
 | `409` | `ALREADY_REGISTERED` | Instance sudah pernah register |
 
 ---
@@ -543,7 +543,7 @@ List licenses milik project tertentu.
 
 ### POST /api/internal/licenses
 
-Membuat license baru secara langsung (direct create). Menghasilkan `license_key` dan `provision_api_key` otomatis.
+Membuat license baru secara langsung (direct create). Menghasilkan `license_key` dan `client_registration_code` otomatis.
 
 **Auth:** Bearer JWT — `project_owner` atau `superuser` saja
 
@@ -596,7 +596,7 @@ Membuat license baru secara langsung (direct create). Menghasilkan `license_key`
 
 ### GET /api/internal/licenses/{id}
 
-Mendapatkan detail license lengkap termasuk `provision_api_key`.
+Mendapatkan detail license lengkap termasuk `client_registration_code`.
 
 **Auth:** Bearer JWT (semua role)
 
@@ -627,7 +627,7 @@ Mendapatkan detail license lengkap termasuk `provision_api_key`.
   "is_registered":       true,
   "instance_url":        "https://mycompany.flasherp.id",
   "instance_name":       "PT Maju Bersama",
-  "provision_api_key":   "prov_xxxxxxxxxxxx",
+  "client_registration_code":   "prov_xxxxxxxxxxxx",
   "check_interval":      "6h",
   "last_pull_at":        "2026-03-25T10:00:00Z"
 }
