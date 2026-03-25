@@ -10,17 +10,19 @@ import (
 	"go.uber.org/zap"
 
 	appmiddleware "github.com/flashlab/vernon-license/internal/middleware"
+	"github.com/flashlab/vernon-license/internal/service"
 )
 
 // DashboardHandler menangani HTTP requests untuk Dashboard stats.
 type DashboardHandler struct {
-	db     *sqlx.DB
-	logger *zap.Logger
+	db         *sqlx.DB
+	logger     *zap.Logger
+	otpService *service.OTPService
 }
 
 // NewDashboardHandler membuat instance DashboardHandler baru.
-func NewDashboardHandler(db *sqlx.DB, logger *zap.Logger) *DashboardHandler {
-	return &DashboardHandler{db: db, logger: logger}
+func NewDashboardHandler(db *sqlx.DB, logger *zap.Logger, otpService *service.OTPService) *DashboardHandler {
+	return &DashboardHandler{db: db, logger: logger, otpService: otpService}
 }
 
 // ExpiringLicense merepresentasikan lisensi yang akan segera expired.
@@ -64,6 +66,12 @@ type ProvisionKeyItem struct {
 	ProvisionAPIKey string `json:"provision_api_key"`
 }
 
+// OTPData merepresentasikan OTP saat ini.
+type OTPData struct {
+	Code      string `json:"code"`
+	ExpiresAt string `json:"expires_at"`
+}
+
 // DashboardStats adalah agregasi statistik untuk halaman dashboard.
 type DashboardStats struct {
 	TotalLicenses     int                `json:"total_licenses"`
@@ -78,6 +86,7 @@ type DashboardStats struct {
 	ExpiringLicenses  []ExpiringLicense  `json:"expiring_licenses"`
 	RecentActivity    []ActivityItem     `json:"recent_activity"`
 	ProvisionKeys     []ProvisionKeyItem `json:"provision_keys"`
+	OTP               OTPData            `json:"otp"`
 }
 
 // GetStats menangani GET /api/internal/dashboard.
@@ -94,6 +103,17 @@ func (h *DashboardHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 		ExpiringLicenses: []ExpiringLicense{},
 		RecentActivity:   []ActivityItem{},
 		ProvisionKeys:    []ProvisionKeyItem{},
+	}
+
+	// Fetch current OTP
+	if code, expiresAt, err := h.otpService.GetCurrentOTP(ctx); err != nil {
+		h.logger.Warn("DashboardHandler.GetStats: failed to get OTP", zap.Error(err))
+		stats.OTP = OTPData{Code: "", ExpiresAt: ""}
+	} else {
+		stats.OTP = OTPData{
+			Code:      code,
+			ExpiresAt: expiresAt.Format(time.RFC3339),
+		}
 	}
 
 	// License counts per status

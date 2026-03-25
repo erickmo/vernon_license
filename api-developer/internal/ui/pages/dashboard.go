@@ -5,6 +5,7 @@ package pages
 import (
 	"fmt"
 	"math"
+	"time"
 
 	"github.com/flashlab/vernon-license/internal/ui/api"
 	"github.com/flashlab/vernon-license/internal/ui/components"
@@ -17,6 +18,12 @@ type provisionKeyItem struct {
 	LicenseKey      string `json:"license_key"`
 	CompanyName     string `json:"company_name"`
 	ProvisionAPIKey string `json:"provision_api_key"`
+}
+
+// otpData merepresentasikan OTP saat ini.
+type otpData struct {
+	Code      string `json:"code"`
+	ExpiresAt string `json:"expires_at"`
 }
 
 // dashboardStats adalah response dari GET /api/internal/dashboard.
@@ -33,6 +40,7 @@ type dashboardStats struct {
 	ExpiringLicenses  []expiringLicense  `json:"expiring_licenses"`
 	RecentActivity    []activityItem     `json:"recent_activity"`
 	ProvisionKeys     []provisionKeyItem `json:"provision_keys"`
+	OTP               otpData            `json:"otp"`
 }
 
 // expiringLicense adalah lisensi yang akan expired dalam 30 hari.
@@ -62,11 +70,12 @@ type chartSegment struct {
 // DashboardPage menampilkan summary dan statistik Vernon License.
 type DashboardPage struct {
 	app.Compo
-	stats     *dashboardStats
-	loading   bool
-	errMsg    string
-	apiBase   string // origin URL, e.g. "http://localhost:8081"
-	authStore store.AuthStore
+	stats        *dashboardStats
+	loading      bool
+	errMsg       string
+	apiBase      string // origin URL, e.g. "http://localhost:8081"
+	authStore    store.AuthStore
+	otpExpiresIn int64 // remaining seconds for OTP expiry
 }
 
 // OnNav dipanggil saat halaman ini di-navigasi.
@@ -78,6 +87,15 @@ func (p *DashboardPage) OnNav(ctx app.Context) {
 	}
 	p.apiBase = app.Window().Get("location").Get("origin").String()
 	p.loadStats(ctx)
+	p.scheduleAutoRefresh(ctx)
+}
+
+// scheduleAutoRefresh menjadwalkan refresh dashboard setiap 5 menit.
+func (p *DashboardPage) scheduleAutoRefresh(ctx app.Context) {
+	ctx.After(5*time.Minute, func(ctx app.Context) {
+		p.loadStats(ctx)
+		p.scheduleAutoRefresh(ctx)
+	})
 }
 
 // loadStats mengambil dashboard stats dari API.
@@ -99,7 +117,31 @@ func (p *DashboardPage) loadStats(ctx app.Context) {
 				return
 			}
 			p.stats = &stats
+
+			// Calculate OTP expiry countdown
+			if stats.OTP.ExpiresAt != "" {
+				expiresAt, err := time.Parse(time.RFC3339, stats.OTP.ExpiresAt)
+				if err == nil {
+					p.otpExpiresIn = int64(expiresAt.Sub(time.Now()).Seconds())
+					if p.otpExpiresIn < 0 {
+						p.otpExpiresIn = 0
+					}
+					// Start countdown timer every second
+					p.startOTPCountdown(ctx)
+				}
+			}
 		})
+	})
+}
+
+// startOTPCountdown menjalankan countdown timer setiap detik untuk OTP.
+func (p *DashboardPage) startOTPCountdown(ctx app.Context) {
+	ctx.After(1*time.Second, func(ctx app.Context) {
+		if p.otpExpiresIn > 0 {
+			p.otpExpiresIn--
+			ctx.Update()
+			p.startOTPCountdown(ctx)
+		}
 	})
 }
 
@@ -181,6 +223,7 @@ func (p *DashboardPage) renderContent() app.UI {
 					return app.Div().
 						Body(
 							p.renderSummaryCards(),
+							p.renderOTPCard(),
 							p.renderChartsRow(),
 						p.renderAPIInfo(),
 							p.renderExpiringTable(),
@@ -289,6 +332,80 @@ func (p *DashboardPage) summaryCard(title, value, subtitle, accentColor, iconPat
 				Style("color", "#9B8DB5").
 				Style("font-size", "12px").
 				Text(subtitle),
+		)
+}
+
+// renderOTPCard merender card OTP dengan countdown timer.
+func (p *DashboardPage) renderOTPCard() app.UI {
+	if p.stats == nil || p.stats.OTP.Code == "" {
+		return app.Div()
+	}
+
+	minutes := p.otpExpiresIn / 60
+	seconds := p.otpExpiresIn % 60
+	timerText := fmt.Sprintf("%d:%02d", minutes, seconds)
+
+	return app.Div().
+		Style("background", "linear-gradient(135deg, rgba(77,41,117,0.5), rgba(38,184,176,0.3))").
+		Style("border", "1px solid rgba(38,184,176,0.4)").
+		Style("border-radius", "12px").
+		Style("padding", "24px").
+		Style("margin-bottom", "28px").
+		Body(
+			app.Div().
+				Style("display", "flex").
+				Style("align-items", "center").
+				Style("justify-content", "space-between").
+				Style("gap", "20px").
+				Body(
+					app.Div().
+						Body(
+							app.Div().
+								Style("color", "#9B8DB5").
+								Style("font-size", "12px").
+								Style("font-weight", "500").
+								Style("text-transform", "uppercase").
+								Style("letter-spacing", "0.05em").
+								Style("margin-bottom", "8px").
+								Text("Client Registration Code"),
+							app.Div().
+								Style("color", "#E2D9F3").
+								Style("font-size", "24px").
+								Style("font-weight", "700").
+								Style("font-family", "monospace").
+								Style("letter-spacing", "2px").
+								Text(p.stats.OTP.Code),
+							app.Div().
+								Style("color", "#9B8DB5").
+								Style("font-size", "11px").
+								Style("margin-top", "8px").
+								Text("Expires dalam 5 menit atau saat digunakan, mana yang lebih dulu"),
+						),
+					app.Div().
+						Style("display", "flex").
+						Style("flex-direction", "column").
+						Style("align-items", "center").
+						Style("justify-content", "center").
+						Style("background", "rgba(38,184,176,0.15)").
+						Style("border-radius", "10px").
+						Style("width", "100px").
+						Style("height", "100px").
+						Style("flex-shrink", "0").
+						Body(
+							app.Div().
+								Style("color", "#26B8B0").
+								Style("font-size", "32px").
+								Style("font-weight", "700").
+								Style("font-family", "monospace").
+								Style("text-align", "center").
+								Text(timerText),
+							app.Div().
+								Style("color", "#9B8DB5").
+								Style("font-size", "10px").
+								Style("margin-top", "4px").
+								Text("menit:detik"),
+						),
+				),
 		)
 }
 
