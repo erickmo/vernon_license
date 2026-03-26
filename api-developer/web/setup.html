@@ -249,7 +249,7 @@
 
       <div class="actions">
         <div class="spacer"></div>
-        <button class="btn btn-primary" onclick="next(2)">Lanjut →</button>
+        <button class="btn btn-primary" id="btn-next1" onclick="next(2)" disabled>Lanjut →</button>
       </div>
     </div>
 
@@ -322,6 +322,18 @@
 
 <script>
   let cur = 1;
+  let dbTestPassed = false;
+
+  // Reset test state when any DB field changes
+  ['db_host','db_port','db_name','db_user','db_pass'].forEach(id => {
+    document.getElementById(id).addEventListener('input', () => {
+      dbTestPassed = false;
+      document.getElementById('btn-next1').disabled = true;
+      const badge = document.getElementById('test-badge');
+      badge.className = 'test-badge';
+      badge.textContent = '';
+    });
+  });
 
   function next(to) {
     hideErr();
@@ -345,6 +357,8 @@
     if (step === 1) {
       if (!g('db_host') || !g('db_port') || !g('db_name') || !g('db_user'))
         return 'Host, port, nama database, dan user wajib diisi.';
+      if (!dbTestPassed)
+        return 'Test koneksi database harus berhasil sebelum lanjut.';
     }
     if (step === 2) {
       if (!g('app_port')) return 'Port server wajib diisi.';
@@ -419,8 +433,10 @@
         body: JSON.stringify({ db_host: g('db_host'), db_port: g('db_port'), db_name: g('db_name'), db_user: g('db_user'), db_password: g('db_pass') })
       });
       const d = await r.json();
-      badge.textContent = d.status === 'ok' ? '✓ ' + d.message : '✗ ' + d.message;
-      badge.className = 'test-badge ' + (d.status === 'ok' ? 'ok' : 'err');
+      dbTestPassed = d.status === 'ok';
+      badge.textContent = dbTestPassed ? '✓ ' + d.message : '✗ ' + d.message;
+      badge.className = 'test-badge ' + (dbTestPassed ? 'ok' : 'err');
+      document.getElementById('btn-next1').disabled = !dbTestPassed;
     } catch(e) {
       badge.textContent = '✗ Tidak bisa menghubungi server';
       badge.className = 'test-badge err';

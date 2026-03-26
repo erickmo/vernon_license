@@ -76,6 +76,9 @@ License status: `pending → active ↔ suspended`, `expired`, `trial`
 
 OTP: per-license (registration auth). Global `otp` table: rotating dashboard display code.
 
+## Setup Wizard (`web/setup.html`)
+Phase 1 (Database): "Lanjut" disabled until Test Koneksi passes. Changing any DB field resets test state.
+
 ## WASM Routing — Critical Rule
 Parameterized routes HARUS `app.RouteWithRegexp`, bukan `app.Route` (exact match only).
 ```go
