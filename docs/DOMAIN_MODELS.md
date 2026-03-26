@@ -23,6 +23,8 @@
 | `otp_generated_at` | kapan OTP dibuat |
 | `is_registered` | true setelah client call /register |
 | `instance_url?, instance_name?` | set saat register |
+| `client_app_ip?` | IP client app, captured dari request saat register |
+| `superuser_username?` | username superuser di client app |
 | `check_interval` | `1h|6h|24h` default `6h` |
 | `last_pull_at?` | timestamp validate terakhir |
 | `proposal_id?` | NULL jika direct create |

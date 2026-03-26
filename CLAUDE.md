@@ -18,7 +18,7 @@ api-developer/
 │   ├── publicapi/           # register + validate
 │   ├── service/             # business logic
 │   └── ui/pages/            # WASM pages
-├── migrations/              # 001–016, sql-migrate format
+├── migrations/              # 001–017, sql-migrate format
 ├── pkg/licenseutil/         # GenerateOTP, GenerateLicenseKey
 └── web/app.wasm
 ```
@@ -35,10 +35,16 @@ make build          # go build -o bin/api ./cmd/api
 
 ## Public API (no auth)
 ```
-POST /api/v1/register   { otp, instance_url, instance_name, product_slug }
-GET  /api/v1/validate   ?key=FL-XXXXXXXX
+POST /api/v1/register       { app_name, otp, client_name, instance_url }
+GET  /api/v1/validate       ?key=FL-XXXXXXXX
+POST /api/v1/validate_otp   { otp }  → { status: true/false }
 ```
 Rate limit: 60 req/min per IP.
+
+### Register Flow
+1. Client app POST register → license app validates (app_name=product slug, otp aktif), captures client_app_ip, creates license "pending", returns license_key
+2. License app admin activates license + inputs username/password → license app calls `POST {instance_url}/api/v1/create-superuser` with {otp, license_key, username, password}
+3. Client app validates request, creates superuser, returns username → license app stores superuser_username
 
 ## Internal API (Bearer JWT)
 ```
@@ -46,7 +52,7 @@ POST /api/internal/auth/login
 GET  /api/internal/companies               POST /api/internal/companies
 GET  /api/internal/licenses                POST /api/internal/licenses
 GET  /api/internal/licenses/{id}
-PUT  /api/internal/licenses/{id}/activate|suspend|renew|status|constraints
+PUT  /api/internal/licenses/{id}/activate|suspend|renew|status|constraints|reset-superuser
 GET  /api/internal/licenses/{id}/otp       (superuser)
 GET  /api/internal/proposals               POST /api/internal/proposals
 PUT  /api/internal/proposals/{id}/submit|approve|reject

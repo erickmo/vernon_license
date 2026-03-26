@@ -3,6 +3,7 @@ package publicapi
 import (
 	"encoding/json"
 	"errors"
+	"net"
 	"net/http"
 	"time"
 
@@ -16,10 +17,10 @@ import (
 
 // registerRequest adalah body JSON dari POST /api/v1/register.
 type registerRequest struct {
-	ProductSlug  string `json:"product_slug"`
-	InstanceURL  string `json:"instance_url"`
-	InstanceName string `json:"instance_name"`
-	OTP          string `json:"otp"`
+	AppName     string `json:"app_name"`
+	OTP         string `json:"otp"`
+	ClientName  string `json:"client_name"`
+	InstanceURL string `json:"instance_url"`
 }
 
 // registerResponse adalah response 201 dari POST /api/v1/register.
@@ -67,11 +68,11 @@ func NewRegisterHandler(
 //
 // Alur:
 //  1. Parse dan validasi request body (semua field wajib).
-//  2. Cek product ada berdasarkan product_slug.
+//  2. Cek product ada berdasarkan app_name (slug).
 //  3. Cek OTP aktif di tabel otp.
-//  4. Find-or-create company berdasarkan instance_name.
+//  4. Find-or-create company berdasarkan client_name.
 //  5. Cek kombinasi company+product belum ada — jika ada return ALREADY_REGISTERED.
-//  6. Buat license baru dengan status "pending" dan company_id diisi.
+//  6. Buat license baru dengan status "pending", company_id, client_app_ip, instance_url.
 //  7. Response 201 dengan license_key dan status.
 func (h *RegisterHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	var req registerRequest
@@ -80,15 +81,22 @@ func (h *RegisterHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.ProductSlug == "" || req.InstanceURL == "" || req.InstanceName == "" || req.OTP == "" {
-		WriteError(w, http.StatusBadRequest, "VALIDATION_FAILED", "All fields are required: product_slug, instance_url, instance_name, otp")
+	if req.AppName == "" || req.OTP == "" || req.ClientName == "" || req.InstanceURL == "" {
+		WriteError(w, http.StatusBadRequest, "VALIDATION_FAILED", "All fields are required: app_name, otp, client_name, instance_url")
 		return
 	}
 
 	ctx := r.Context()
 
-	// Step 2: validasi product ada
-	product, err := h.products.FindBySlug(ctx, req.ProductSlug)
+	// Capture client IP dari request (Chi RealIP middleware sudah handle X-Forwarded-For)
+	clientIP := r.RemoteAddr
+	// Strip port jika ada (e.g. "192.168.1.1:54321" → "192.168.1.1")
+	if host, _, err := net.SplitHostPort(clientIP); err == nil {
+		clientIP = host
+	}
+
+	// Step 2: validasi product ada berdasarkan app_name (slug)
+	product, err := h.products.FindBySlug(ctx, req.AppName)
 	if err != nil {
 		if errors.Is(err, domain.ErrProductNotFound) {
 			WriteError(w, http.StatusForbidden, "PRODUCT_NOT_FOUND", "Product not found")
@@ -105,8 +113,8 @@ func (h *RegisterHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Step 4: find-or-create company berdasarkan instance_name
-	company, err := h.companies.FindByName(ctx, req.InstanceName)
+	// Step 4: find-or-create company berdasarkan client_name
+	company, err := h.companies.FindByName(ctx, req.ClientName)
 	if err != nil {
 		if !errors.Is(err, domain.ErrCompanyNotFound) {
 			h.log.Error("register: FindByName", zap.Error(err))
@@ -116,7 +124,7 @@ func (h *RegisterHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		// Company belum ada — buat baru
 		company = &domain.Company{
 			ID:        uuid.New(),
-			Name:      req.InstanceName,
+			Name:      req.ClientName,
 			CreatedBy: nil,
 		}
 		if err := h.companies.Create(ctx, company); err != nil {
@@ -150,7 +158,7 @@ func (h *RegisterHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	instanceURL := req.InstanceURL
-	instanceName := req.InstanceName
+	clientName := req.ClientName
 
 	license := &domain.ClientLicense{
 		ID:            uuid.New(),
@@ -162,7 +170,8 @@ func (h *RegisterHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		Modules:       []string{},
 		Apps:          []string{},
 		InstanceURL:   &instanceURL,
-		InstanceName:  &instanceName,
+		InstanceName:  &clientName,
+		ClientAppIP:   &clientIP,
 		CheckInterval: checkInterval,
 		IsRegistered:  true,
 		CreatedBy:     nil,

@@ -89,6 +89,14 @@ func (m *mockLicenseRepository) UpdateStatus(ctx context.Context, id uuid.UUID, 
 	return nil
 }
 
+func (m *mockLicenseRepository) UpdateSuperuser(ctx context.Context, id uuid.UUID, username string) error {
+	return nil
+}
+
+func (m *mockLicenseRepository) FindByCompany(ctx context.Context, companyID uuid.UUID) ([]*domain.ClientLicense, error) {
+	return nil, nil
+}
+
 // MockProductRepository
 type mockProductRepository struct {
 	findByIDFn   func(ctx context.Context, id uuid.UUID) (*domain.Product, error)
@@ -193,6 +201,10 @@ func (m *mockOTPRepository) IsActive(ctx context.Context, code string) error {
 	return nil
 }
 
+func (m *mockOTPRepository) GetActive(ctx context.Context) (string, error) {
+	return "mock-otp", nil
+}
+
 func TestRegisterHandler_ValidRequest(t *testing.T) {
 	t.Log("=== TEST: RegisterHandler ValidRequest ===")
 	t.Log("Goal    : Registrasi dengan valid OTP & product harus sukses, license dibuat dengan status pending")
@@ -239,9 +251,9 @@ func TestRegisterHandler_ValidRequest(t *testing.T) {
 
 	reqBody := map[string]string{
 		"otp":           "test_code_123",
-		"instance_name": "Test Company",
+		"client_name":  "Test Company",
 		"instance_url":  "http://test.example.com",
-		"product_slug":  "flasherp",
+		"app_name":      "flasherp",
 	}
 
 	bodyBytes, _ := json.Marshal(reqBody)
@@ -311,9 +323,9 @@ func TestRegisterHandler_InvalidOTP(t *testing.T) {
 
 	reqBody := map[string]string{
 		"otp":           "invalid_code",
-		"instance_name": "Test",
+		"client_name":  "Test",
 		"instance_url":  "http://test.com",
-		"product_slug":  "flasherp",
+		"app_name":      "flasherp",
 	}
 
 	bodyBytes, _ := json.Marshal(reqBody)
@@ -365,9 +377,9 @@ func TestRegisterHandler_ProductNotFound(t *testing.T) {
 
 	reqBody := map[string]string{
 		"otp":           "test_code_123",
-		"instance_name": "Test",
+		"client_name":  "Test",
 		"instance_url":  "http://test.com",
-		"product_slug":  "nonexistent",
+		"app_name":      "nonexistent",
 	}
 
 	bodyBytes, _ := json.Marshal(reqBody)

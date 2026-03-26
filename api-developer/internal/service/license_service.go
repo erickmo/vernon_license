@@ -1,9 +1,12 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -19,6 +22,7 @@ type LicenseService struct {
 	productRepo domain.ProductRepository
 	auditRepo   domain.AuditLogRepository
 	notifRepo   domain.NotificationRepository
+	otpRepo     domain.OTPRepository
 	logger      *zap.Logger
 }
 
@@ -28,6 +32,7 @@ func NewLicenseService(
 	productRepo domain.ProductRepository,
 	auditRepo domain.AuditLogRepository,
 	notifRepo domain.NotificationRepository,
+	otpRepo domain.OTPRepository,
 	logger *zap.Logger,
 ) *LicenseService {
 	return &LicenseService{
@@ -35,6 +40,7 @@ func NewLicenseService(
 		productRepo: productRepo,
 		auditRepo:   auditRepo,
 		notifRepo:   notifRepo,
+		otpRepo:     otpRepo,
 		logger:      logger,
 	}
 }
@@ -419,6 +425,137 @@ func (s *LicenseService) UpdateStatus(ctx context.Context, id uuid.UUID, status 
 		return fmt.Errorf("LicenseService.UpdateStatus: %w", err)
 	}
 	return nil
+}
+
+// ActivateWithSuperuser mengubah status license ke "active" dan membuat superuser di client app.
+func (s *LicenseService) ActivateWithSuperuser(ctx context.Context, id uuid.UUID, username, password string, actorID uuid.UUID, actorName string) error {
+	return s.changeStatusWithSuperuser(ctx, id, "active", username, password, actorID, actorName)
+}
+
+// SetTrialWithSuperuser mengubah status license ke "trial" dan membuat superuser di client app.
+func (s *LicenseService) SetTrialWithSuperuser(ctx context.Context, id uuid.UUID, username, password string, actorID uuid.UUID, actorName string) error {
+	return s.changeStatusWithSuperuser(ctx, id, "trial", username, password, actorID, actorName)
+}
+
+// ResetSuperuser membuat/mereset superuser di client app tanpa mengubah status license.
+func (s *LicenseService) ResetSuperuser(ctx context.Context, id uuid.UUID, username, password string, actorID uuid.UUID, actorName string) error {
+	license, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return fmt.Errorf("LicenseService.ResetSuperuser find: %w", err)
+	}
+
+	returnedUsername, err := s.callCreateSuperuser(ctx, license, username, password)
+	if err != nil {
+		return err
+	}
+
+	if err := s.repo.UpdateSuperuser(ctx, id, returnedUsername); err != nil {
+		return fmt.Errorf("LicenseService.ResetSuperuser update: %w", err)
+	}
+
+	changes, _ := json.Marshal(map[string]string{"username": returnedUsername})
+	LogAudit(ctx, s.auditRepo, s.logger, "license", id, "superuser_reset", actorID, actorName, changes)
+
+	return nil
+}
+
+// changeStatusWithSuperuser adalah helper untuk activate/trial dengan superuser creation.
+func (s *LicenseService) changeStatusWithSuperuser(ctx context.Context, id uuid.UUID, targetStatus, username, password string, actorID uuid.UUID, actorName string) error {
+	license, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return fmt.Errorf("LicenseService.changeStatusWithSuperuser find: %w", err)
+	}
+
+	if err := validateTransition(license.Status, targetStatus); err != nil {
+		return fmt.Errorf("LicenseService.changeStatusWithSuperuser: %w", err)
+	}
+
+	prevStatus := license.Status
+
+	// Call client app untuk create superuser
+	returnedUsername, err := s.callCreateSuperuser(ctx, license, username, password)
+	if err != nil {
+		return err
+	}
+
+	// Update status
+	if err := s.repo.UpdateStatus(ctx, id, targetStatus); err != nil {
+		return fmt.Errorf("LicenseService.changeStatusWithSuperuser update status: %w", err)
+	}
+
+	// Update superuser username
+	if err := s.repo.UpdateSuperuser(ctx, id, returnedUsername); err != nil {
+		s.logger.Error("changeStatusWithSuperuser: UpdateSuperuser failed", zap.Error(err))
+	}
+
+	changes, _ := json.Marshal(map[string]string{
+		"from":     prevStatus,
+		"to":       targetStatus,
+		"username": returnedUsername,
+	})
+	LogAudit(ctx, s.auditRepo, s.logger, "license", id, "status_changed_with_superuser", actorID, actorName, changes)
+
+	return nil
+}
+
+// callCreateSuperuser memanggil client app untuk membuat superuser.
+// Mengirim POST ke {instance_url}/api/v1/create-superuser dengan body {otp, license_key, username, password}.
+// Mengembalikan username dari response client app.
+func (s *LicenseService) callCreateSuperuser(ctx context.Context, license *domain.ClientLicense, username, password string) (string, error) {
+	if license.InstanceURL == nil || *license.InstanceURL == "" {
+		return "", fmt.Errorf("LicenseService.callCreateSuperuser: %w", domain.ErrLicenseNoInstanceURL)
+	}
+
+	// Ambil OTP aktif
+	activeOTP, err := s.otpRepo.GetActive(ctx)
+	if err != nil {
+		return "", fmt.Errorf("LicenseService.callCreateSuperuser: %w", domain.ErrNoActiveOTP)
+	}
+
+	// Construct URL
+	instanceURL := strings.TrimRight(*license.InstanceURL, "/")
+	callbackURL := instanceURL + "/api/v1/create-superuser"
+
+	// Build request body
+	reqBody, _ := json.Marshal(map[string]string{
+		"otp":         activeOTP,
+		"license_key": license.LicenseKey,
+		"username":    username,
+		"password":    password,
+	})
+
+	// Call client app
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, callbackURL, bytes.NewReader(reqBody))
+	if err != nil {
+		return "", fmt.Errorf("LicenseService.callCreateSuperuser new request: %w", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(httpReq)
+	if err != nil {
+		return "", fmt.Errorf("LicenseService.callCreateSuperuser call failed: %w: %w", domain.ErrSuperuserCreationFailed, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		var errBody map[string]any
+		_ = json.NewDecoder(resp.Body).Decode(&errBody)
+		return "", fmt.Errorf("LicenseService.callCreateSuperuser: client returned %d: %v: %w", resp.StatusCode, errBody, domain.ErrSuperuserCreationFailed)
+	}
+
+	// Parse response — expect {"username": "..."}
+	var result struct {
+		Username string `json:"username"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("LicenseService.callCreateSuperuser decode response: %w", err)
+	}
+
+	if result.Username == "" {
+		result.Username = username
+	}
+
+	return result.Username, nil
 }
 
 // validateTransition memvalidasi apakah perubahan status dari `from` ke `to` diizinkan.

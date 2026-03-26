@@ -39,8 +39,10 @@ type LicenseDetail struct {
 	IsRegistered           bool     `json:"is_registered"`
 	InstanceURL            string   `json:"instance_url"`
 	InstanceName           string   `json:"instance_name"`
-	CheckInterval          string   `json:"check_interval"`
-	LastPullAt             *string  `json:"last_pull_at"`
+	ClientAppIP       string  `json:"client_app_ip"`
+	SuperuserUsername  string  `json:"superuser_username"`
+	CheckInterval     string  `json:"check_interval"`
+	LastPullAt        *string `json:"last_pull_at"`
 }
 
 // LicenseDetailPage menampilkan detail license dengan 3 tabs: Info, Registration, Activity.
@@ -55,6 +57,16 @@ type LicenseDetailPage struct {
 	showSuspendConfirm bool
 	authStore          store.AuthStore
 	showStatusDropdown bool
+
+	// Activate dialog state
+	showActivateDialog bool
+	activateUsername    string
+	activatePassword   string
+
+	// Reset superuser dialog state
+	showResetDialog bool
+	resetUsername    string
+	resetPassword   string
 }
 
 // OnNav dipanggil saat halaman ini di-navigasi.
@@ -136,13 +148,95 @@ func (p *LicenseDetailPage) onTabClick(tab string) func(app.Context, app.Event) 
 	}
 }
 
-// onActivate mengubah status license ke "active".
+// onActivate membuka dialog input username/password untuk aktivasi.
 func (p *LicenseDetailPage) onActivate(ctx app.Context, e app.Event) {
+	p.activateUsername = ""
+	p.activatePassword = ""
+	p.showActivateDialog = true
+}
+
+// onActivateCancel menutup dialog aktivasi.
+func (p *LicenseDetailPage) onActivateCancel(ctx app.Context, e app.Event) {
+	p.showActivateDialog = false
+}
+
+// onActivateUsernameInput menangani input username di dialog aktivasi.
+func (p *LicenseDetailPage) onActivateUsernameInput(ctx app.Context, e app.Event) {
+	p.activateUsername = ctx.JSSrc().Get("value").String()
+}
+
+// onActivatePasswordInput menangani input password di dialog aktivasi.
+func (p *LicenseDetailPage) onActivatePasswordInput(ctx app.Context, e app.Event) {
+	p.activatePassword = ctx.JSSrc().Get("value").String()
+}
+
+// onActivateConfirm mengeksekusi aktivasi dengan superuser creation.
+func (p *LicenseDetailPage) onActivateConfirm(ctx app.Context, e app.Event) {
+	if p.activateUsername == "" || p.activatePassword == "" {
+		p.errMsg = "Username dan password wajib diisi"
+		return
+	}
+	p.showActivateDialog = false
 	token := p.authStore.GetToken()
 	licenseID := p.licenseID
+	username := p.activateUsername
+	password := p.activatePassword
 	ctx.Async(func() {
 		client := api.NewClient("", token)
-		if err := client.Put(context.Background(), "/api/internal/licenses/"+licenseID+"/activate", nil, nil); err != nil {
+		body := map[string]string{"username": username, "password": password}
+		if err := client.Put(context.Background(), "/api/internal/licenses/"+licenseID+"/activate", body, nil); err != nil {
+			ctx.Dispatch(func(ctx app.Context) { p.errMsg = err.Error() })
+			return
+		}
+		var detail LicenseDetail
+		if err := client.Get(context.Background(), "/api/internal/licenses/"+licenseID, &detail); err != nil {
+			ctx.Dispatch(func(ctx app.Context) { p.errMsg = err.Error() })
+			return
+		}
+		ctx.Dispatch(func(ctx app.Context) {
+			p.errMsg = ""
+			p.license = &detail
+		})
+	})
+}
+
+// onResetSuperuser membuka dialog reset superuser.
+func (p *LicenseDetailPage) onResetSuperuser(ctx app.Context, e app.Event) {
+	p.resetUsername = ""
+	p.resetPassword = ""
+	p.showResetDialog = true
+}
+
+// onResetCancel menutup dialog reset superuser.
+func (p *LicenseDetailPage) onResetCancel(ctx app.Context, e app.Event) {
+	p.showResetDialog = false
+}
+
+// onResetUsernameInput menangani input username di dialog reset.
+func (p *LicenseDetailPage) onResetUsernameInput(ctx app.Context, e app.Event) {
+	p.resetUsername = ctx.JSSrc().Get("value").String()
+}
+
+// onResetPasswordInput menangani input password di dialog reset.
+func (p *LicenseDetailPage) onResetPasswordInput(ctx app.Context, e app.Event) {
+	p.resetPassword = ctx.JSSrc().Get("value").String()
+}
+
+// onResetConfirm mengeksekusi reset superuser.
+func (p *LicenseDetailPage) onResetConfirm(ctx app.Context, e app.Event) {
+	if p.resetUsername == "" || p.resetPassword == "" {
+		p.errMsg = "Username dan password wajib diisi"
+		return
+	}
+	p.showResetDialog = false
+	token := p.authStore.GetToken()
+	licenseID := p.licenseID
+	username := p.resetUsername
+	password := p.resetPassword
+	ctx.Async(func() {
+		client := api.NewClient("", token)
+		body := map[string]string{"username": username, "password": password}
+		if err := client.Put(context.Background(), "/api/internal/licenses/"+licenseID+"/reset-superuser", body, nil); err != nil {
 			ctx.Dispatch(func(ctx app.Context) { p.errMsg = err.Error() })
 			return
 		}
@@ -323,6 +417,20 @@ func (p *LicenseDetailPage) renderContent() app.UI {
 			app.If(p.showSuspendConfirm,
 				func() app.UI {
 					return p.renderSuspendConfirmDialog()
+				},
+			),
+
+			// Activate dialog (username+password)
+			app.If(p.showActivateDialog,
+				func() app.UI {
+					return p.renderActivateDialog()
+				},
+			),
+
+			// Reset superuser dialog
+			app.If(p.showResetDialog,
+				func() app.UI {
+					return p.renderResetSuperuserDialog()
 				},
 			),
 
@@ -616,20 +724,57 @@ func (p *LicenseDetailPage) renderInfoTab() app.UI {
 // renderActionButtons merender tombol aksi berdasarkan status license.
 func (p *LicenseDetailPage) renderActionButtons() app.UI {
 	l := p.license
+
+	resetBtn := app.Button().
+		Style("background", "rgba(245,158,11,0.15)").
+		Style("border", "1px solid rgba(245,158,11,0.4)").
+		Style("border-radius", "8px").
+		Style("padding", "7px 16px").
+		Style("color", "#F59E0B").
+		Style("font-size", "13px").
+		Style("font-weight", "600").
+		Style("cursor", "pointer").
+		OnClick(p.onResetSuperuser).
+		Text("Reset Superuser")
+
 	switch l.Status {
 	case "active":
-		return app.Button().
-			Style("background", "rgba(239,68,68,0.15)").
-			Style("border", "1px solid rgba(239,68,68,0.4)").
-			Style("border-radius", "8px").
-			Style("padding", "7px 16px").
-			Style("color", "#EF4444").
-			Style("font-size", "13px").
-			Style("font-weight", "600").
-			Style("cursor", "pointer").
-			OnClick(p.onSuspendRequest).
-			Text("Suspend")
-	case "suspended", "pending", "trial":
+		return app.Div().
+			Style("display", "flex").
+			Style("gap", "8px").
+			Body(
+				app.Button().
+					Style("background", "rgba(239,68,68,0.15)").
+					Style("border", "1px solid rgba(239,68,68,0.4)").
+					Style("border-radius", "8px").
+					Style("padding", "7px 16px").
+					Style("color", "#EF4444").
+					Style("font-size", "13px").
+					Style("font-weight", "600").
+					Style("cursor", "pointer").
+					OnClick(p.onSuspendRequest).
+					Text("Suspend"),
+				resetBtn,
+			)
+	case "trial":
+		return app.Div().
+			Style("display", "flex").
+			Style("gap", "8px").
+			Body(
+				app.Button().
+					Style("background", "rgba(34,197,94,0.15)").
+					Style("border", "1px solid rgba(34,197,94,0.4)").
+					Style("border-radius", "8px").
+					Style("padding", "7px 16px").
+					Style("color", "#22C55E").
+					Style("font-size", "13px").
+					Style("font-weight", "600").
+					Style("cursor", "pointer").
+					OnClick(p.onActivate).
+					Text("Activate"),
+				resetBtn,
+			)
+	case "suspended", "pending":
 		return app.Button().
 			Style("background", "rgba(34,197,94,0.15)").
 			Style("border", "1px solid rgba(34,197,94,0.4)").
@@ -717,6 +862,226 @@ func (p *LicenseDetailPage) renderSuperuserStatusDropdown() app.UI {
 		)
 }
 
+// renderActivateDialog merender dialog input username dan password untuk aktivasi license.
+func (p *LicenseDetailPage) renderActivateDialog() app.UI {
+	return app.Div().
+		Style("position", "fixed").
+		Style("inset", "0").
+		Style("background", "rgba(0,0,0,0.6)").
+		Style("display", "flex").
+		Style("align-items", "center").
+		Style("justify-content", "center").
+		Style("z-index", "1000").
+		Body(
+			app.Div().
+				Style("background", "#1A1035").
+				Style("border", "1px solid rgba(34,197,94,0.4)").
+				Style("border-radius", "12px").
+				Style("padding", "28px 32px").
+				Style("max-width", "440px").
+				Style("width", "100%").
+				Body(
+					app.H2().
+						Style("color", "#E2D9F3").
+						Style("font-size", "18px").
+						Style("font-weight", "700").
+						Style("margin", "0 0 8px").
+						Text("Activate License"),
+					app.P().
+						Style("color", "#9B8DB5").
+						Style("font-size", "14px").
+						Style("margin", "0 0 20px").
+						Text("Masukkan username dan password untuk superuser di client app."),
+					// Username input
+					app.Div().
+						Style("margin-bottom", "14px").
+						Body(
+							app.Label().
+								Style("display", "block").
+								Style("color", "#9B8DB5").
+								Style("font-size", "12px").
+								Style("margin-bottom", "6px").
+								Text("Username"),
+							app.Input().
+								Type("text").
+								Placeholder("superuser username").
+								Style("width", "100%").
+								Style("padding", "10px 14px").
+								Style("background", "rgba(77,41,117,0.15)").
+								Style("border", "1px solid rgba(77,41,117,0.4)").
+								Style("border-radius", "8px").
+								Style("color", "#E2D9F3").
+								Style("font-size", "14px").
+								Style("outline", "none").
+								Style("box-sizing", "border-box").
+								OnInput(p.onActivateUsernameInput),
+						),
+					// Password input
+					app.Div().
+						Style("margin-bottom", "20px").
+						Body(
+							app.Label().
+								Style("display", "block").
+								Style("color", "#9B8DB5").
+								Style("font-size", "12px").
+								Style("margin-bottom", "6px").
+								Text("Password"),
+							app.Input().
+								Type("password").
+								Placeholder("superuser password").
+								Style("width", "100%").
+								Style("padding", "10px 14px").
+								Style("background", "rgba(77,41,117,0.15)").
+								Style("border", "1px solid rgba(77,41,117,0.4)").
+								Style("border-radius", "8px").
+								Style("color", "#E2D9F3").
+								Style("font-size", "14px").
+								Style("outline", "none").
+								Style("box-sizing", "border-box").
+								OnInput(p.onActivatePasswordInput),
+						),
+					// Buttons
+					app.Div().
+						Style("display", "flex").
+						Style("gap", "12px").
+						Style("justify-content", "flex-end").
+						Body(
+							app.Button().
+								Style("background", "rgba(77,41,117,0.2)").
+								Style("border", "1px solid rgba(77,41,117,0.4)").
+								Style("border-radius", "8px").
+								Style("padding", "10px 20px").
+								Style("color", "#9B8DB5").
+								Style("font-size", "14px").
+								Style("cursor", "pointer").
+								OnClick(p.onActivateCancel).
+								Text("Batal"),
+							app.Button().
+								Style("background", "rgba(34,197,94,0.2)").
+								Style("border", "1px solid rgba(34,197,94,0.5)").
+								Style("border-radius", "8px").
+								Style("padding", "10px 20px").
+								Style("color", "#22C55E").
+								Style("font-size", "14px").
+								Style("font-weight", "600").
+								Style("cursor", "pointer").
+								OnClick(p.onActivateConfirm).
+								Text("Activate"),
+						),
+				),
+		)
+}
+
+// renderResetSuperuserDialog merender dialog input username dan password untuk reset superuser.
+func (p *LicenseDetailPage) renderResetSuperuserDialog() app.UI {
+	return app.Div().
+		Style("position", "fixed").
+		Style("inset", "0").
+		Style("background", "rgba(0,0,0,0.6)").
+		Style("display", "flex").
+		Style("align-items", "center").
+		Style("justify-content", "center").
+		Style("z-index", "1000").
+		Body(
+			app.Div().
+				Style("background", "#1A1035").
+				Style("border", "1px solid rgba(245,158,11,0.4)").
+				Style("border-radius", "12px").
+				Style("padding", "28px 32px").
+				Style("max-width", "440px").
+				Style("width", "100%").
+				Body(
+					app.H2().
+						Style("color", "#E2D9F3").
+						Style("font-size", "18px").
+						Style("font-weight", "700").
+						Style("margin", "0 0 8px").
+						Text("Reset Superuser"),
+					app.P().
+						Style("color", "#9B8DB5").
+						Style("font-size", "14px").
+						Style("margin", "0 0 20px").
+						Text("Masukkan username dan password baru untuk superuser di client app."),
+					// Username input
+					app.Div().
+						Style("margin-bottom", "14px").
+						Body(
+							app.Label().
+								Style("display", "block").
+								Style("color", "#9B8DB5").
+								Style("font-size", "12px").
+								Style("margin-bottom", "6px").
+								Text("Username"),
+							app.Input().
+								Type("text").
+								Placeholder("superuser username").
+								Style("width", "100%").
+								Style("padding", "10px 14px").
+								Style("background", "rgba(77,41,117,0.15)").
+								Style("border", "1px solid rgba(77,41,117,0.4)").
+								Style("border-radius", "8px").
+								Style("color", "#E2D9F3").
+								Style("font-size", "14px").
+								Style("outline", "none").
+								Style("box-sizing", "border-box").
+								OnInput(p.onResetUsernameInput),
+						),
+					// Password input
+					app.Div().
+						Style("margin-bottom", "20px").
+						Body(
+							app.Label().
+								Style("display", "block").
+								Style("color", "#9B8DB5").
+								Style("font-size", "12px").
+								Style("margin-bottom", "6px").
+								Text("Password"),
+							app.Input().
+								Type("password").
+								Placeholder("superuser password").
+								Style("width", "100%").
+								Style("padding", "10px 14px").
+								Style("background", "rgba(77,41,117,0.15)").
+								Style("border", "1px solid rgba(77,41,117,0.4)").
+								Style("border-radius", "8px").
+								Style("color", "#E2D9F3").
+								Style("font-size", "14px").
+								Style("outline", "none").
+								Style("box-sizing", "border-box").
+								OnInput(p.onResetPasswordInput),
+						),
+					// Buttons
+					app.Div().
+						Style("display", "flex").
+						Style("gap", "12px").
+						Style("justify-content", "flex-end").
+						Body(
+							app.Button().
+								Style("background", "rgba(77,41,117,0.2)").
+								Style("border", "1px solid rgba(77,41,117,0.4)").
+								Style("border-radius", "8px").
+								Style("padding", "10px 20px").
+								Style("color", "#9B8DB5").
+								Style("font-size", "14px").
+								Style("cursor", "pointer").
+								OnClick(p.onResetCancel).
+								Text("Batal"),
+							app.Button().
+								Style("background", "rgba(245,158,11,0.2)").
+								Style("border", "1px solid rgba(245,158,11,0.5)").
+								Style("border-radius", "8px").
+								Style("padding", "10px 20px").
+								Style("color", "#F59E0B").
+								Style("font-size", "14px").
+								Style("font-weight", "600").
+								Style("cursor", "pointer").
+								OnClick(p.onResetConfirm).
+								Text("Reset Superuser"),
+						),
+				),
+		)
+}
+
 // renderRegistrationTab merender tab Registration Status.
 func (p *LicenseDetailPage) renderRegistrationTab() app.UI {
 	l := p.license
@@ -783,6 +1148,18 @@ func (p *LicenseDetailPage) renderRegistrationTab() app.UI {
 				Body(
 					infoCard("Instance URL", instanceURL),
 					infoCard("Instance Name", instanceName),
+					infoCard("Client App IP", func() string {
+						if l.ClientAppIP != "" {
+							return l.ClientAppIP
+						}
+						return "—"
+					}()),
+					infoCard("Superuser", func() string {
+						if l.SuperuserUsername != "" {
+							return l.SuperuserUsername
+						}
+						return "—"
+					}()),
 					infoCard("Last Validate At", lastPullAt),
 					infoCard("Check Interval", l.CheckInterval),
 				),

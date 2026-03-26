@@ -50,6 +50,8 @@ type licenseRow struct {
 	OTPGeneratedAt *time.Time     `db:"otp_generated_at"`
 	OTPPrevious    *string        `db:"otp_previous"`
 	OTPPreviousAt  *time.Time     `db:"otp_previous_at"`
+	ClientAppIP                       *string        `db:"client_app_ip"`
+	SuperuserUsername                  *string        `db:"superuser_username"`
 	CheckInterval                     string         `db:"check_interval"`
 	LastPullAt                        *time.Time     `db:"last_pull_at"`
 	IsRegistered                      bool           `db:"is_registered"`
@@ -88,6 +90,8 @@ func (lr *licenseRow) toDomain() *domain.ClientLicense {
 		OTPGeneratedAt: lr.OTPGeneratedAt,
 		OTPPrevious:    lr.OTPPrevious,
 		OTPPreviousAt:  lr.OTPPreviousAt,
+		ClientAppIP:                       lr.ClientAppIP,
+		SuperuserUsername:                  lr.SuperuserUsername,
 		CheckInterval:                     lr.CheckInterval,
 		LastPullAt:                        lr.LastPullAt,
 		IsRegistered:                      lr.IsRegistered,
@@ -107,6 +111,7 @@ const licenseSelectCols = `
 	max_items, max_customers, max_branches, max_storage,
 	expires_at, instance_url, instance_name, otp,
 	otp_generated_at, otp_previous, otp_previous_at,
+	client_app_ip, superuser_username,
 	check_interval, last_pull_at, is_registered, proposal_id,
 	created_by, created_at, updated_at, deleted_at, archived_at`
 
@@ -147,6 +152,7 @@ func (r *LicenseRepo) FindByOTP(ctx context.Context, otp, productSlug string) (*
 		cl.max_items, cl.max_customers, cl.max_branches, cl.max_storage,
 		cl.expires_at, cl.instance_url, cl.instance_name, cl.otp,
 		cl.otp_generated_at, cl.otp_previous, cl.otp_previous_at,
+		cl.client_app_ip, cl.superuser_username,
 		cl.check_interval, cl.last_pull_at, cl.is_registered, cl.proposal_id,
 		cl.created_by, cl.created_at, cl.updated_at, cl.deleted_at, cl.archived_at
 	FROM client_licenses cl
@@ -215,6 +221,7 @@ func (r *LicenseRepo) FindByCompany(ctx context.Context, companyID uuid.UUID) ([
 		       max_items, max_customers, max_branches, max_storage,
 		       expires_at, instance_url, instance_name, otp,
 		       otp_generated_at, otp_previous, otp_previous_at,
+		       client_app_ip, superuser_username,
 		       check_interval, last_pull_at, is_registered, proposal_id,
 		       created_by, created_at, updated_at, deleted_at, archived_at
 		FROM client_licenses
@@ -236,6 +243,7 @@ func (r *LicenseRepo) FindByCompanyAndProduct(ctx context.Context, companyID, pr
 		       max_items, max_customers, max_branches, max_storage,
 		       expires_at, instance_url, instance_name, otp,
 		       otp_generated_at, otp_previous, otp_previous_at,
+		       client_app_ip, superuser_username,
 		       check_interval, last_pull_at, is_registered, proposal_id,
 		       created_by, created_at, updated_at, deleted_at, archived_at
 		FROM client_licenses
@@ -260,7 +268,8 @@ func (r *LicenseRepo) Create(ctx context.Context, l *domain.ClientLicense) error
 		     max_users, max_trans_per_month, max_trans_per_day,
 		     max_items, max_customers, max_branches, max_storage,
 		     expires_at, instance_url, instance_name, otp,
-		     otp_generated_at, check_interval, last_pull_at, is_registered, proposal_id,
+		     otp_generated_at, client_app_ip, superuser_username,
+		     check_interval, last_pull_at, is_registered, proposal_id,
 		     created_by, created_at, updated_at)
 		VALUES
 		    ($1, $2, $3, $4, $5, $6, $7,
@@ -268,8 +277,9 @@ func (r *LicenseRepo) Create(ctx context.Context, l *domain.ClientLicense) error
 		     $12, $13, $14,
 		     $15, $16, $17, $18,
 		     $19, $20, $21, $22,
-		     $23, $24, $25, $26, $27,
-		     $28, NOW(), NOW())
+		     $23, $24, $25,
+		     $26, $27, $28, $29,
+		     $30, NOW(), NOW())
 		RETURNING created_at, updated_at`
 	if err := r.db.QueryRowContext(ctx, q,
 		l.ID, l.LicenseKey, l.ProjectID, l.CompanyID, l.ProductID, l.Plan, l.Status,
@@ -277,7 +287,8 @@ func (r *LicenseRepo) Create(ctx context.Context, l *domain.ClientLicense) error
 		l.MaxUsers, l.MaxTransPerMonth, l.MaxTransPerDay,
 		l.MaxItems, l.MaxCustomers, l.MaxBranches, l.MaxStorage,
 		l.ExpiresAt, l.InstanceURL, l.InstanceName, l.OTP,
-		l.OTPGeneratedAt, l.CheckInterval, l.LastPullAt, l.IsRegistered, l.ProposalID,
+		l.OTPGeneratedAt, l.ClientAppIP, l.SuperuserUsername,
+		l.CheckInterval, l.LastPullAt, l.IsRegistered, l.ProposalID,
 		l.CreatedBy,
 	).Scan(&l.CreatedAt, &l.UpdatedAt); err != nil {
 		return fmt.Errorf("LicenseRepo.Create: %w", err)
@@ -360,6 +371,23 @@ func (r *LicenseRepo) UpdateStatus(ctx context.Context, id uuid.UUID, status str
 	n, err := res.RowsAffected()
 	if err != nil {
 		return fmt.Errorf("LicenseRepo.UpdateStatus: rows affected: %w", err)
+	}
+	if n == 0 {
+		return domain.ErrLicenseNotFound
+	}
+	return nil
+}
+
+// UpdateSuperuser memperbarui superuser_username pada license.
+func (r *LicenseRepo) UpdateSuperuser(ctx context.Context, id uuid.UUID, username string) error {
+	const q = `UPDATE client_licenses SET superuser_username = $1, updated_at = NOW() WHERE id = $2 AND deleted_at IS NULL`
+	res, err := r.db.ExecContext(ctx, q, username, id)
+	if err != nil {
+		return fmt.Errorf("LicenseRepo.UpdateSuperuser: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("LicenseRepo.UpdateSuperuser: rows affected: %w", err)
 	}
 	if n == 0 {
 		return domain.ErrLicenseNotFound

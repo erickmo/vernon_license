@@ -75,3 +75,12 @@ var ErrValidationFailed = errors.New("VALIDATION_FAILED")
 
 // ErrUserNotFound dikembalikan ketika user tidak ditemukan.
 var ErrUserNotFound = errors.New("USER_NOT_FOUND")
+
+// ErrSuperuserCreationFailed dikembalikan ketika call ke client app untuk create superuser gagal.
+var ErrSuperuserCreationFailed = errors.New("SUPERUSER_CREATION_FAILED")
+
+// ErrNoActiveOTP dikembalikan ketika tidak ada OTP aktif di tabel otp.
+var ErrNoActiveOTP = errors.New("NO_ACTIVE_OTP")
+
+// ErrLicenseNoInstanceURL dikembalikan ketika license tidak memiliki instance_url untuk callback.
+var ErrLicenseNoInstanceURL = errors.New("LICENSE_NO_INSTANCE_URL")

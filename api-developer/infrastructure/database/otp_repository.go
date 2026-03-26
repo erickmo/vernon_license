@@ -36,3 +36,18 @@ func (r *OTPRepository) IsActive(ctx context.Context, code string) error {
 	}
 	return nil
 }
+
+// GetActive mengembalikan kode OTP yang sedang aktif (belum expired).
+func (r *OTPRepository) GetActive(ctx context.Context) (string, error) {
+	var code string
+	err := r.db.GetContext(ctx, &code, `
+		SELECT code FROM otp
+		WHERE expires_at > NOW()
+		ORDER BY created_at DESC
+		LIMIT 1
+	`)
+	if err != nil {
+		return "", fmt.Errorf("GetActive: %w", err)
+	}
+	return code, nil
+}

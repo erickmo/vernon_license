@@ -36,6 +36,8 @@ type ClientLicense struct {
 	OTPGeneratedAt *time.Time `db:"otp_generated_at"`
 	OTPPrevious    *string    `db:"otp_previous" json:"-"`
 	OTPPreviousAt  *time.Time `db:"otp_previous_at"`
+	ClientAppIP                       *string    `db:"client_app_ip"`
+	SuperuserUsername                  *string    `db:"superuser_username"`
 	CheckInterval                     string     `db:"check_interval"`
 	LastPullAt                        *time.Time `db:"last_pull_at"`
 	IsRegistered                      bool       `db:"is_registered"`
@@ -118,4 +120,7 @@ type LicenseRepository interface {
 
 	// UpdateStatus memperbarui status license.
 	UpdateStatus(ctx context.Context, id uuid.UUID, status string) error
+
+	// UpdateSuperuser memperbarui superuser_username pada license.
+	UpdateSuperuser(ctx context.Context, id uuid.UUID, username string) error
 }

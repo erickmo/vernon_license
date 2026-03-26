@@ -133,6 +133,7 @@ func provideDatabase(cfg *config.Config, lc fx.Lifecycle) (*sqlx.DB, error) {
 func provideRouter(
 	registerHandler *publicapi.RegisterHandler,
 	validateHandler *publicapi.ValidateHandler,
+	validateOTPHandler *publicapi.ValidateOTPHandler,
 	authHandler *handler.AuthHandler,
 	setupHandler *handler.SetupHandler,
 	companyHandler *handler.CompanyHandler,
@@ -166,6 +167,7 @@ func provideRouter(
 		r.Use(ratelimit.NewRateLimiter(60))
 		r.Post("/api/v1/register", registerHandler.Handle)
 		r.Get("/api/v1/validate", validateHandler.Handle)
+		r.Post("/api/v1/validate_otp", validateOTPHandler.Handle)
 	})
 
 	// Internal API — no auth required
@@ -203,6 +205,7 @@ func provideRouter(
 		r.Put("/api/internal/licenses/{id}/renew", licenseHandler.Renew)
 		r.Put("/api/internal/licenses/{id}/constraints", licenseHandler.UpdateConstraints)
 		r.Put("/api/internal/licenses/{id}/status", licenseHandler.SetStatus)
+		r.Put("/api/internal/licenses/{id}/reset-superuser", licenseHandler.ResetSuperuser)
 		// Audit logs hanya bisa diakses oleh superuser
 		r.Group(func(r chi.Router) {
 			r.Use(appmiddleware.RequireRole("superuser"))

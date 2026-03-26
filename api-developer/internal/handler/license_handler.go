@@ -85,9 +85,11 @@ type licenseDetailDTO struct {
 	IsRegistered           bool     `json:"is_registered"`
 	InstanceURL            string   `json:"instance_url"`
 	InstanceName           string   `json:"instance_name"`
-	OTP string   `json:"otp"`
-	CheckInterval          string   `json:"check_interval"`
-	LastPullAt             *string  `json:"last_pull_at"`
+	OTP               string `json:"otp"`
+	ClientAppIP       string `json:"client_app_ip"`
+	SuperuserUsername  string `json:"superuser_username"`
+	CheckInterval     string `json:"check_interval"`
+	LastPullAt        *string `json:"last_pull_at"`
 }
 
 // createLicenseRequest adalah body JSON untuk POST /api/internal/licenses.
@@ -357,8 +359,15 @@ func (h *LicenseHandler) Create(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, dto)
 }
 
+// activateRequest adalah body opsional untuk PUT /api/internal/licenses/{id}/activate.
+type activateRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
 // Activate menangani PUT /api/internal/licenses/{id}/activate.
 // Mengubah status license ke "active". Hanya project_owner dan superuser.
+// Jika username dan password dikirim, akan memanggil client app untuk membuat superuser.
 func (h *LicenseHandler) Activate(w http.ResponseWriter, r *http.Request) {
 	claims, ok := appmiddleware.UserFromContext(r.Context())
 	if !ok {
@@ -379,21 +388,90 @@ func (h *LicenseHandler) Activate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.licenseSvc.Activate(r.Context(), id, actorID, claims.Name); err != nil {
-		if errors.Is(err, domain.ErrLicenseNotFound) {
-			writeError(w, http.StatusNotFound, "LICENSE_NOT_FOUND", "License tidak ditemukan")
+	var req activateRequest
+	_ = json.NewDecoder(r.Body).Decode(&req)
+
+	if req.Username != "" && req.Password != "" {
+		// Activate with superuser creation
+		if err := h.licenseSvc.ActivateWithSuperuser(r.Context(), id, req.Username, req.Password, actorID, claims.Name); err != nil {
+			h.handleLicenseError(w, "LicenseHandler.Activate", err)
 			return
 		}
-		if errors.Is(err, domain.ErrLicenseInvalidTransition) {
-			writeError(w, http.StatusBadRequest, "INVALID_TRANSITION", err.Error())
+	} else {
+		if err := h.licenseSvc.Activate(r.Context(), id, actorID, claims.Name); err != nil {
+			h.handleLicenseError(w, "LicenseHandler.Activate", err)
 			return
 		}
-		h.logger.Error("LicenseHandler.Activate", zap.Error(err))
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Internal server error")
-		return
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"status": "active"})
+}
+
+// ResetSuperuser menangani PUT /api/internal/licenses/{id}/reset-superuser.
+// Membuat/mereset superuser di client app tanpa mengubah status license.
+func (h *LicenseHandler) ResetSuperuser(w http.ResponseWriter, r *http.Request) {
+	claims, ok := appmiddleware.UserFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Not authenticated")
+		return
+	}
+
+	idStr := chi.URLParam(r, "id")
+	id, err := parseUUID(idStr)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "VALIDATION_FAILED", "Invalid license ID")
+		return
+	}
+
+	actorID, err := parseUUID(claims.Sub)
+	if err != nil {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Invalid token subject")
+		return
+	}
+
+	var req activateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "VALIDATION_FAILED", "Invalid request body")
+		return
+	}
+
+	if req.Username == "" || req.Password == "" {
+		writeError(w, http.StatusBadRequest, "VALIDATION_FAILED", "username dan password wajib diisi")
+		return
+	}
+
+	if err := h.licenseSvc.ResetSuperuser(r.Context(), id, req.Username, req.Password, actorID, claims.Name); err != nil {
+		h.handleLicenseError(w, "LicenseHandler.ResetSuperuser", err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"result": "ok", "username": req.Username})
+}
+
+// handleLicenseError adalah helper untuk menangani error dari LicenseService.
+func (h *LicenseHandler) handleLicenseError(w http.ResponseWriter, caller string, err error) {
+	if errors.Is(err, domain.ErrLicenseNotFound) {
+		writeError(w, http.StatusNotFound, "LICENSE_NOT_FOUND", "License tidak ditemukan")
+		return
+	}
+	if errors.Is(err, domain.ErrLicenseInvalidTransition) {
+		writeError(w, http.StatusBadRequest, "INVALID_TRANSITION", err.Error())
+		return
+	}
+	if errors.Is(err, domain.ErrSuperuserCreationFailed) {
+		writeError(w, http.StatusBadGateway, "SUPERUSER_CREATION_FAILED", err.Error())
+		return
+	}
+	if errors.Is(err, domain.ErrNoActiveOTP) {
+		writeError(w, http.StatusBadRequest, "NO_ACTIVE_OTP", "Tidak ada OTP aktif. Pastikan ada OTP yang belum expired.")
+		return
+	}
+	if errors.Is(err, domain.ErrLicenseNoInstanceURL) {
+		writeError(w, http.StatusBadRequest, "NO_INSTANCE_URL", "License tidak memiliki instance URL untuk callback ke client app.")
+		return
+	}
+	h.logger.Error(caller, zap.Error(err))
+	writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Internal server error")
 }
 
 // Suspend menangani PUT /api/internal/licenses/{id}/suspend.
@@ -748,6 +826,12 @@ func (h *LicenseHandler) toLicenseDetailDTO(r *http.Request, l *domain.ClientLic
 	}
 	if l.OTP != nil {
 		dto.OTP = *l.OTP
+	}
+	if l.ClientAppIP != nil {
+		dto.ClientAppIP = *l.ClientAppIP
+	}
+	if l.SuperuserUsername != nil {
+		dto.SuperuserUsername = *l.SuperuserUsername
 	}
 
 	if l.ExpiresAt != nil {

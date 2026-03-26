@@ -32,6 +32,32 @@ GET /api/internal/setup/status → { is_setup: false }
 POST /api/internal/setup/install { name, email, password } → creates superuser
 ```
 
+## License Registration & Superuser Flow
+
+```
+1. Client App registers:
+   POST /api/v1/register { app_name, otp, client_name, instance_url }
+   → License app captures client_app_ip, validates, creates license (pending)
+   → Returns license_key
+   → Client stores: license_key, license_app_ip, instance_url in .env
+
+2. License App admin approves (activate/trial):
+   Admin inputs username + password in UI
+   → License app fetches active OTP from otp table
+   → License app calls POST {instance_url}/api/v1/create-superuser
+     Body: { otp, license_key, username, password }
+   → Client app validates:
+     - license_key matches .env
+     - sender IP = license_app_ip in .env
+     - OTP via POST {license_app_url}/api/v1/validate_otp
+   → Client creates superuser, returns { username }
+   → License app stores superuser_username, updates status
+
+3. Reset Superuser (anytime):
+   PUT /api/internal/licenses/{id}/reset-superuser { username, password }
+   → Same callback flow as step 2, no status change
+```
+
 ---
 
 ## Error Codes
@@ -61,5 +87,8 @@ POST /api/internal/setup/install { name, email, password } → creates superuser
 | `PROPOSAL_ACTIVE_EXISTS` | 409 |
 | `PRODUCT_SLUG_EXISTS` | 409 |
 | `USER_EMAIL_EXISTS` | 409 |
+| `SUPERUSER_CREATION_FAILED` | 502 |
+| `NO_ACTIVE_OTP` | 400 |
+| `NO_INSTANCE_URL` | 400 |
 | `VALIDATION_FAILED` | 400 |
 | `INTERNAL_ERROR` | 500 |
