@@ -126,9 +126,16 @@ func handleTestDB(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.DBHost == "" || req.DBPort == "" || req.DBName == "" || req.DBUser == "" || req.DBPassword == "" {
-		writeJSON(w, http.StatusOK, map[string]string{"status": "error", "message": "Host, port, database, user, dan password wajib diisi"})
+	if req.DBHost == "" || req.DBPort == "" || req.DBName == "" {
+		writeJSON(w, http.StatusOK, map[string]string{"status": "error", "message": "Host, port, dan nama database wajib diisi"})
 		return
+	}
+	// Substitute garbage credentials when empty so trust/peer auth never passes silently
+	if req.DBUser == "" {
+		req.DBUser = "x9k2m7_no_user"
+	}
+	if req.DBPassword == "" {
+		req.DBPassword = "q3w8f1_no_pass"
 	}
 
 	db, err := sql.Open("postgres", req.dbDSN("postgres"))
