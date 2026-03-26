@@ -97,6 +97,12 @@ type ActivityLogPage struct{ app.Compo }
 // Render stub untuk server-side.
 func (p *ActivityLogPage) Render() app.UI { return app.Div() }
 
+// PublicAPIDocsPage menampilkan dokumentasi Public API.
+type PublicAPIDocsPage struct{ app.Compo }
+
+// Render stub untuk server-side.
+func (p *PublicAPIDocsPage) Render() app.UI { return app.Div() }
+
 // NotFoundPage adalah halaman 404.
 type NotFoundPage struct{ app.Compo }
 

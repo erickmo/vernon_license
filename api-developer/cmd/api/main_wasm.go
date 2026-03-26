@@ -28,6 +28,7 @@ func main() {
 	app.RouteWithRegexp(`^/users/[^/]+$`, func() app.Composer { return &pages.UserDetailPage{} })
 	app.Route("/notifications", func() app.Composer { return &pages.NotificationsPage{} })
 	app.Route("/logs", func() app.Composer { return &pages.ActivityLogPage{} })
+	app.RouteWithRegexp(`^/docs/PUBLIC_API\.md$`, func() app.Composer { return &pages.PublicAPIDocsPage{} })
 	app.RouteWithRegexp(".*", func() app.Composer { return &pages.NotFoundPage{} })
 
 	app.RunWhenOnBrowser()

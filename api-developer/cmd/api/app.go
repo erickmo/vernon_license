@@ -23,6 +23,7 @@ func init() {
 	app.Route("/users", func() app.Composer { return &pages.UsersListPage{} })
 	app.Route("/notifications", func() app.Composer { return &pages.NotificationsPage{} })
 	app.Route("/logs", func() app.Composer { return &pages.ActivityLogPage{} })
+	app.RouteWithRegexp(`^/docs/PUBLIC_API\.md$`, func() app.Composer { return &pages.PublicAPIDocsPage{} })
 	app.RouteWithRegexp(`^/licenses/[^/]+$`, func() app.Composer { return &pages.LicenseDetailPage{} })
 	app.RouteWithRegexp(`^/projects/[^/]+$`, func() app.Composer { return &pages.ProjectDetailPage{} })
 	app.RouteWithRegexp(`^/proposals/[^/]+/edit$`, func() app.Composer { return &pages.ProposalFormPage{} })
