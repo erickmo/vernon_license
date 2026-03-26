@@ -44,8 +44,19 @@ test:
 test-cover:
 	go tool cover -html=coverage.out
 
-# ─── Reset (drop DB + delete .env) ────────────────────────────────
+# ─── Reset (drop DB + delete .env + rebuild + run) ────────────────
 reset:
+	@echo "============================================"
+	@echo "  ⚠  FULL RESET — this will:"
+	@echo "    1. Drop the database"
+	@echo "    2. Delete .env"
+	@echo "    3. Clean build artifacts"
+	@echo "    4. Rebuild server + WASM"
+	@echo "    5. Run the service (setup via web)"
+	@echo "============================================"
+	@printf "Type YES! to confirm: " && read ans && [ "$$ans" = "YES!" ] || (echo "Aborted."; exit 1)
+	@echo ""
+	@echo ">>> Step 1: Drop database..."
 	@if [ -f .env ]; then \
 		DB_URL=$$(grep '^DATABASE_URL=' .env | cut -d'=' -f2-); \
 		if [ -n "$$DB_URL" ]; then \
@@ -53,16 +64,29 @@ reset:
 			DB_HOST=$$(echo "$$DB_URL" | sed -n 's|.*@\([^:]*\).*|\1|p'); \
 			DB_PORT=$$(echo "$$DB_URL" | sed -n 's|.*:\([0-9]*\)/.*|\1|p'); \
 			DB_USER=$$(echo "$$DB_URL" | sed -n 's|.*://\([^:]*\).*|\1|p'); \
-			echo "Dropping database '$$DB_NAME' on $$DB_HOST:$$DB_PORT..."; \
+			echo "    Dropping '$$DB_NAME' on $$DB_HOST:$$DB_PORT..."; \
 			PGPASSWORD=$$(echo "$$DB_URL" | sed -n 's|.*://[^:]*:\([^@]*\)@.*|\1|p') \
 				dropdb -h "$$DB_HOST" -p "$$DB_PORT" -U "$$DB_USER" --if-exists "$$DB_NAME"; \
-			echo "Database '$$DB_NAME' dropped."; \
+			echo "    Database dropped."; \
 		fi; \
-		rm -f .env; \
-		echo ".env deleted."; \
 	else \
-		echo "No .env file found, nothing to reset."; \
+		echo "    No .env found, skipping drop."; \
 	fi
+	@echo ">>> Step 2: Delete .env..."
+	@rm -f .env
+	@echo "    .env deleted."
+	@echo ">>> Step 3: Clean build artifacts..."
+	@rm -rf bin/ web/app.wasm
+	@echo "    Cleaned."
+	@echo ">>> Step 4: Build server + WASM..."
+	@$(MAKE) build-all
+	@echo "    Build complete."
+	@echo ""
+	@echo "============================================"
+	@echo "  Reset complete. Starting service..."
+	@echo "  Complete setup at http://localhost:8081"
+	@echo "============================================"
+	@$(MAKE) dev
 
 # ─── Lint ──────────────────────────────────────────────────────────
 lint:
