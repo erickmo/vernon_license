@@ -221,3 +221,25 @@ func (h *DashboardHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, stats)
 }
+
+// GetOTP menangani GET /api/internal/dashboard/otp.
+// Mengembalikan hanya OTP code dan waktu kadaluarsa (tanpa stats lain).
+func (h *DashboardHandler) GetOTP(w http.ResponseWriter, r *http.Request) {
+	_, ok := appmiddleware.UserFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Not authenticated")
+		return
+	}
+
+	code, expiresAt, err := h.otpService.GetCurrentOTP(r.Context())
+	if err != nil {
+		h.logger.Warn("DashboardHandler.GetOTP: failed to get OTP", zap.Error(err))
+		writeJSON(w, http.StatusOK, OTPData{Code: "", ExpiresAt: ""})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, OTPData{
+		Code:      code,
+		ExpiresAt: expiresAt.Format(time.RFC3339),
+	})
+}

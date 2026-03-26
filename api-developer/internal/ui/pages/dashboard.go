@@ -168,15 +168,15 @@ func (p *DashboardPage) onCopyOTP(ctx app.Context, e app.Event) {
 	}
 }
 
-// refreshOTPOnly mengambil OTP terbaru tanpa refresh seluruh dashboard.
+// refreshOTPOnly mengambil OTP terbaru via dedicated endpoint tanpa refresh seluruh dashboard.
 // Silent refresh - tidak ada loading state atau error message yang ditampilkan.
 func (p *DashboardPage) refreshOTPOnly(ctx app.Context) {
 	token := p.authStore.GetToken()
 
 	ctx.Async(func() {
 		client := api.NewClient("", token)
-		var stats dashboardStats
-		err := client.Get(ctx, "/api/internal/dashboard", &stats)
+		var otp otpData
+		err := client.Get(ctx, "/api/internal/dashboard/otp", &otp)
 
 		ctx.Dispatch(func(ctx app.Context) {
 			if err != nil {
@@ -185,25 +185,25 @@ func (p *DashboardPage) refreshOTPOnly(ctx app.Context) {
 					ctx.Navigate("/login")
 					return
 				}
-				// Silent fail - coba lagi nanti tanpa menampilkan error
+				// Silent fail - retry setelah 10 detik
+				p.otpExpiresIn = 10
 				p.startOTPCountdown(ctx)
 				return
 			}
 
-			// Update hanya OTP data (tidak ada loading state)
+			// Update hanya OTP data
 			if p.stats != nil {
-				p.stats.OTP = stats.OTP
+				p.stats.OTP = otp
 			}
 
 			// Calculate OTP expiry countdown
-			if stats.OTP.ExpiresAt != "" {
-				expiresAt, err := time.Parse(time.RFC3339, stats.OTP.ExpiresAt)
+			if otp.ExpiresAt != "" {
+				expiresAt, err := time.Parse(time.RFC3339, otp.ExpiresAt)
 				if err == nil {
 					p.otpExpiresIn = int64(expiresAt.Sub(time.Now()).Seconds())
 					if p.otpExpiresIn < 0 {
 						p.otpExpiresIn = 0
 					}
-					// Update UI dan restart countdown
 					ctx.Update()
 					p.startOTPCountdown(ctx)
 				}
@@ -874,8 +874,6 @@ func renderAPIEndpoint(method, fullURL, desc, docURL string) app.UI {
 								Text(fullURL),
 							app.A().
 								Href(docURL).
-								Target("_blank").
-								Rel("noopener noreferrer").
 								Style("color", "#26B8B0").
 								Style("font-size", "12px").
 								Style("cursor", "pointer").

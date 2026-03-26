@@ -223,6 +223,7 @@ func provideRouter(
 
 		// Dashboard
 		r.Get("/api/internal/dashboard", dashboardHandler.GetStats)
+		r.Get("/api/internal/dashboard/otp", dashboardHandler.GetOTP)
 
 		// Products
 		r.Get("/api/internal/products", productHandler.List)

@@ -26,7 +26,7 @@ Vernon App adalah internal management tool. Bicara langsung ke DB via repository
 
 ## Key Features
 
-**Dashboard**: license count by status, expiring soon, pending proposals, recent activity
+**Dashboard**: license count by status, expiring soon, pending proposals, recent activity, OTP with AJAX auto-refresh (no page reload on expiry)
 
 **License Detail** (tabs: Info · Registration · Activity)
 - Info: status, plan, constraints, company/project/product

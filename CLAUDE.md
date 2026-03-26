@@ -52,6 +52,7 @@ GET  /api/internal/proposals               POST /api/internal/proposals
 PUT  /api/internal/proposals/{id}/submit|approve|reject
 GET  /api/internal/products                POST /api/internal/products
 GET  /api/internal/dashboard
+GET  /api/internal/dashboard/otp              ← lightweight OTP-only (AJAX refresh)
 GET  /api/internal/notifications
 ```
 

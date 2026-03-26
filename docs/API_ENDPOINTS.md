@@ -16,6 +16,7 @@ GET  /api/v1/client/license?key=FL-XXXXX     ← Klien ambil data lisensinya sen
 ```
 GET  /api/v1/auth/me
 GET  /api/v1/dashboard                       ← Analytics dashboard (lihat Dashboard section)
+GET  /api/v1/dashboard/otp                   ← OTP code only (lightweight AJAX refresh)
 ```
 
 ## Protected + Role: `sales` | `project_owner` | `superuser`
