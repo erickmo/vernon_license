@@ -238,8 +238,8 @@
       </div>
       <div class="field"><label>Nama Database</label><input id="db_name" value="vernon_license" placeholder="vernon_license"></div>
       <div class="row">
-        <div class="field"><label>User</label><input id="db_user" placeholder="postgres"></div>
-        <div class="field"><label>Password</label><input id="db_pass" type="password" placeholder="••••••••"></div>
+        <div class="field"><label>User</label><input id="db_user" placeholder="postgres" value="x9k2m7"></div>
+        <div class="field"><label>Password</label><input id="db_pass" type="password" placeholder="••••••••" value="q3w8f1"></div>
       </div>
 
       <div class="test-row">
@@ -423,6 +423,11 @@
   async function testDB() {
     const btn = document.getElementById('btn-test');
     const badge = document.getElementById('test-badge');
+    if (!g('db_host') || !g('db_port') || !g('db_name') || !g('db_user') || !g('db_pass')) {
+      badge.textContent = '✗ Host, port, database, user, dan password wajib diisi.';
+      badge.className = 'test-badge err';
+      return;
+    }
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span>';
     badge.className = 'test-badge';

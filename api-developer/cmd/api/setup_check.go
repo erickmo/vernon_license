@@ -126,6 +126,11 @@ func handleTestDB(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.DBHost == "" || req.DBPort == "" || req.DBName == "" || req.DBUser == "" || req.DBPassword == "" {
+		writeJSON(w, http.StatusOK, map[string]string{"status": "error", "message": "Host, port, database, user, dan password wajib diisi"})
+		return
+	}
+
 	db, err := sql.Open("postgres", req.dbDSN("postgres"))
 	if err != nil {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "error", "message": err.Error()})
