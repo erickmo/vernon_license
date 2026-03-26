@@ -8,7 +8,7 @@ infra-down:
 	docker-compose down
 
 # ─── Development ───────────────────────────────────────────────────
-dev:
+dev: build-wasm
 	@lsof -ti :8081 | xargs -r kill -9 2>/dev/null || true
 	go run ./cmd/api
 

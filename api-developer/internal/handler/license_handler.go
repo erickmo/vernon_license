@@ -448,6 +448,7 @@ func (h *LicenseHandler) ResetSuperuser(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusOK, map[string]string{"result": "ok", "username": req.Username})
 }
 
+
 // handleLicenseError adalah helper untuk menangani error dari LicenseService.
 func (h *LicenseHandler) handleLicenseError(w http.ResponseWriter, caller string, err error) {
 	if errors.Is(err, domain.ErrLicenseNotFound) {

@@ -558,6 +558,7 @@ func (s *LicenseService) callCreateSuperuser(ctx context.Context, license *domai
 	return result.Username, nil
 }
 
+
 // validateTransition memvalidasi apakah perubahan status dari `from` ke `to` diizinkan.
 // Mengembalikan domain.ErrLicenseInvalidTransition jika transisi tidak valid.
 func validateTransition(from, to string) error {
