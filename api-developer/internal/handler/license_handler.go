@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 	"unicode"
 
@@ -460,11 +461,18 @@ func (h *LicenseHandler) ResetSuperuser(w http.ResponseWriter, r *http.Request) 
 
 
 // validateSuperuserPassword checks password strength for superuser creation/reset.
-// Rules: min 8 chars, at least one uppercase, lowercase, digit, and special character.
+// Rules:
+//   - min 12 chars
+//   - at least one uppercase, lowercase, digit, and special character
+//   - no 3+ consecutive identical characters (aaa, !!!)
+//   - no sequential keyboard patterns (qwe, asd, zxc, 123, etc.)
+//   - no sequential alphabet patterns (abc, xyz, etc.)
+//
 // Returns an empty string if valid, or a descriptive error message.
 func validateSuperuserPassword(password string) string {
-	if len(password) < 8 {
-		return "password minimal 8 karakter"
+	const minLen = 12
+	if len(password) < minLen {
+		return "password minimal 12 karakter"
 	}
 	var hasUpper, hasLower, hasDigit, hasSpecial bool
 	for _, c := range password {
@@ -491,7 +499,61 @@ func validateSuperuserPassword(password string) string {
 	if !hasSpecial {
 		return "password harus mengandung karakter spesial (!@#$...)"
 	}
+	if err := checkPasswordPatterns(password); err != "" {
+		return err
+	}
 	return ""
+}
+
+// checkPasswordPatterns mendeteksi pola berulang/berurutan yang dilarang.
+func checkPasswordPatterns(password string) string {
+	lower := strings.ToLower(password)
+	runes := []rune(lower)
+	n := len(runes)
+
+	// No 3+ consecutive identical characters
+	for i := 2; i < n; i++ {
+		if runes[i] == runes[i-1] && runes[i] == runes[i-2] {
+			return "password tidak boleh mengandung 3 karakter sama berurutan (contoh: aaa, !!!)"
+		}
+	}
+
+	// Sequential keyboard rows (forward and backward)
+	keyboardRows := []string{
+		"qwertyuiop", "asdfghjkl", "zxcvbnm",
+		"1234567890",
+	}
+	for _, row := range keyboardRows {
+		rowRunes := []rune(row)
+		for i := 0; i <= len(rowRunes)-3; i++ {
+			seq := string(rowRunes[i : i+3])
+			rev := reverseString(seq)
+			if strings.Contains(lower, seq) || strings.Contains(lower, rev) {
+				return "password tidak boleh mengandung pola keyboard berurutan (contoh: qwe, asd, 123)"
+			}
+		}
+	}
+
+	// Sequential alphabet patterns
+	const alphabet = "abcdefghijklmnopqrstuvwxyz"
+	alphabetRunes := []rune(alphabet)
+	for i := 0; i <= len(alphabetRunes)-3; i++ {
+		seq := string(alphabetRunes[i : i+3])
+		rev := reverseString(seq)
+		if strings.Contains(lower, seq) || strings.Contains(lower, rev) {
+			return "password tidak boleh mengandung pola alfabet berurutan (contoh: abc, xyz)"
+		}
+	}
+
+	return ""
+}
+
+func reverseString(s string) string {
+	runes := []rune(s)
+	for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
+		runes[i], runes[j] = runes[j], runes[i]
+	}
+	return string(runes)
 }
 
 // handleLicenseError adalah helper untuk menangani error dari LicenseService.

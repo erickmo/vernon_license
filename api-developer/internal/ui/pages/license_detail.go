@@ -187,13 +187,16 @@ func (p *LicenseDetailPage) onCredUsernameInput(ctx app.Context, e app.Event) {
 }
 
 // credPasswordValidate validates superuser password strength on the client side.
+// Rules: min 12 chars, uppercase, lowercase, digit, special char,
+// no 3+ identical consecutive chars, no keyboard/alphabet sequential patterns.
 // Returns an empty string if valid, or a user-facing error message.
 func credPasswordValidate(password string) string {
 	if len(password) == 0 {
 		return ""
 	}
-	if len(password) < 8 {
-		return "Minimal 8 karakter"
+	const minLen = 12
+	if len(password) < minLen {
+		return "Minimal 12 karakter"
 	}
 	var hasUpper, hasLower, hasDigit, hasSpecial bool
 	for _, c := range password {
@@ -220,7 +223,46 @@ func credPasswordValidate(password string) string {
 	if !hasSpecial {
 		return "Harus mengandung karakter spesial (!@#$...)"
 	}
+	lower := strings.ToLower(password)
+	runes := []rune(lower)
+	n := len(runes)
+	// No 3+ consecutive identical characters
+	for i := 2; i < n; i++ {
+		if runes[i] == runes[i-1] && runes[i] == runes[i-2] {
+			return "Tidak boleh 3 karakter sama berurutan (contoh: aaa, !!!)"
+		}
+	}
+	// Sequential keyboard rows
+	keyboardRows := []string{"qwertyuiop", "asdfghjkl", "zxcvbnm", "1234567890"}
+	for _, row := range keyboardRows {
+		rowRunes := []rune(row)
+		for i := 0; i <= len(rowRunes)-3; i++ {
+			seq := string(rowRunes[i : i+3])
+			rev := credReverseStr(seq)
+			if strings.Contains(lower, seq) || strings.Contains(lower, rev) {
+				return "Tidak boleh pola keyboard berurutan (contoh: qwe, asd, 123)"
+			}
+		}
+	}
+	// Sequential alphabet patterns
+	const alphabet = "abcdefghijklmnopqrstuvwxyz"
+	alphabetRunes := []rune(alphabet)
+	for i := 0; i <= len(alphabetRunes)-3; i++ {
+		seq := string(alphabetRunes[i : i+3])
+		rev := credReverseStr(seq)
+		if strings.Contains(lower, seq) || strings.Contains(lower, rev) {
+			return "Tidak boleh pola alfabet berurutan (contoh: abc, xyz)"
+		}
+	}
 	return ""
+}
+
+func credReverseStr(s string) string {
+	r := []rune(s)
+	for i, j := 0, len(r)-1; i < j; i, j = i+1, j-1 {
+		r[i], r[j] = r[j], r[i]
+	}
+	return string(r)
 }
 
 // onCredPasswordInput menangani input password di credential dialog.
@@ -1216,7 +1258,7 @@ func (p *LicenseDetailPage) renderCredDialog() app.UI {
 								Style("color", "#6B5E85").
 								Style("font-size", "11px").
 								Style("margin", "6px 0 0").
-								Text("Min 8 karakter · Huruf besar & kecil · Angka · Karakter spesial"),
+								Text("Min 12 karakter · Huruf besar & kecil · Angka · Karakter spesial · Tanpa pola berurutan"),
 							app.If(p.credPasswordError != "",
 								func() app.UI {
 									return app.P().
