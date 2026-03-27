@@ -1,4 +1,4 @@
-.PHONY: infra-up infra-down dev dev-wasm migrate-up migrate-down tidy test lint build build-wasm build-all reset
+.PHONY: infra-up infra-down dev dev-wasm migrate-up migrate-down tidy test lint build build-wasm build-all clean reset
 
 # ─── Infrastructure ────────────────────────────────────────────────
 infra-up:
@@ -8,13 +8,16 @@ infra-down:
 	docker-compose down
 
 # ─── Development ───────────────────────────────────────────────────
-dev: build-wasm
+dev: clean build-wasm
 	@lsof -ti :8081 | xargs -r kill -9 2>/dev/null || true
 	go run ./cmd/api
 
 dev-wasm:
 	@chmod +x scripts/watch-wasm.sh
 	@bash scripts/watch-wasm.sh
+
+clean:
+	@rm -rf bin/ web/app.wasm
 
 build:
 	go build -o bin/api ./cmd/api
