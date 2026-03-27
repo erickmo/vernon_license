@@ -164,6 +164,7 @@ func (h *RegisterHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		ID:            uuid.New(),
 		LicenseKey:    licenseKey,
 		ProductID:     product.ID,
+		ProductSlug:   product.Slug,
 		CompanyID:     &company.ID,
 		Plan:          "standard",
 		Status:        "pending",

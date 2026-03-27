@@ -38,6 +38,7 @@ type ClientLicense struct {
 	OTPPreviousAt  *time.Time `db:"otp_previous_at"`
 	ClientAppIP                       *string    `db:"client_app_ip"`
 	SuperuserUsername                  *string    `db:"superuser_username"`
+	ProductSlug                        string     `db:"product_slug"`
 	CheckInterval                     string     `db:"check_interval"`
 	LastPullAt                        *time.Time `db:"last_pull_at"`
 	IsRegistered                      bool       `db:"is_registered"`

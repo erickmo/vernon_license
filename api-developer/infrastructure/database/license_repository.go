@@ -268,7 +268,7 @@ func (r *LicenseRepo) Create(ctx context.Context, l *domain.ClientLicense) error
 		     max_users, max_trans_per_month, max_trans_per_day,
 		     max_items, max_customers, max_branches, max_storage,
 		     expires_at, instance_url, instance_name, otp,
-		     otp_generated_at, client_app_ip, superuser_username,
+		     otp_generated_at, client_app_ip, superuser_username, product_slug,
 		     check_interval, last_pull_at, is_registered, proposal_id,
 		     created_by, created_at, updated_at)
 		VALUES
@@ -277,9 +277,9 @@ func (r *LicenseRepo) Create(ctx context.Context, l *domain.ClientLicense) error
 		     $12, $13, $14,
 		     $15, $16, $17, $18,
 		     $19, $20, $21, $22,
-		     $23, $24, $25,
-		     $26, $27, $28, $29,
-		     $30, NOW(), NOW())
+		     $23, $24, $25, $26,
+		     $27, $28, $29, $30,
+		     $31, NOW(), NOW())
 		RETURNING created_at, updated_at`
 	if err := r.db.QueryRowContext(ctx, q,
 		l.ID, l.LicenseKey, l.ProjectID, l.CompanyID, l.ProductID, l.Plan, l.Status,
@@ -287,7 +287,7 @@ func (r *LicenseRepo) Create(ctx context.Context, l *domain.ClientLicense) error
 		l.MaxUsers, l.MaxTransPerMonth, l.MaxTransPerDay,
 		l.MaxItems, l.MaxCustomers, l.MaxBranches, l.MaxStorage,
 		l.ExpiresAt, l.InstanceURL, l.InstanceName, l.OTP,
-		l.OTPGeneratedAt, l.ClientAppIP, l.SuperuserUsername,
+		l.OTPGeneratedAt, l.ClientAppIP, l.SuperuserUsername, l.ProductSlug,
 		l.CheckInterval, l.LastPullAt, l.IsRegistered, l.ProposalID,
 		l.CreatedBy,
 	).Scan(&l.CreatedAt, &l.UpdatedAt); err != nil {

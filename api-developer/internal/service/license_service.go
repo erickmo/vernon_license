@@ -518,10 +518,11 @@ func (s *LicenseService) callCreateSuperuser(ctx context.Context, license *domai
 
 	// Build request body
 	reqBody, _ := json.Marshal(map[string]string{
-		"otp":         activeOTP,
-		"license_key": license.LicenseKey,
-		"username":    username,
-		"password":    password,
+		"otp":          activeOTP,
+		"license_key":  license.LicenseKey,
+		"username":     username,
+		"password":     password,
+		"product_slug": license.ProductSlug,
 	})
 
 	// Call client app
