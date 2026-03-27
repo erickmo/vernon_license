@@ -124,4 +124,7 @@ type LicenseRepository interface {
 
 	// UpdateSuperuser memperbarui superuser_username pada license.
 	UpdateSuperuser(ctx context.Context, id uuid.UUID, username string) error
+
+	// ExistsByProductID mengembalikan true jika ada minimal satu license untuk product tersebut.
+	ExistsByProductID(ctx context.Context, productID uuid.UUID) (bool, error)
 }

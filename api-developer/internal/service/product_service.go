@@ -40,17 +40,19 @@ type UpdateProductRequest struct {
 
 // ProductService mengelola business logic untuk entitas Product.
 type ProductService struct {
-	repo      domain.ProductRepository
-	auditRepo domain.AuditLogRepository
-	logger    *zap.Logger
+	repo        domain.ProductRepository
+	licenseRepo domain.LicenseRepository
+	auditRepo   domain.AuditLogRepository
+	logger      *zap.Logger
 }
 
 // NewProductService membuat instance ProductService baru.
-func NewProductService(repo domain.ProductRepository, audit domain.AuditLogRepository, logger *zap.Logger) *ProductService {
+func NewProductService(repo domain.ProductRepository, licenseRepo domain.LicenseRepository, audit domain.AuditLogRepository, logger *zap.Logger) *ProductService {
 	return &ProductService{
-		repo:      repo,
-		auditRepo: audit,
-		logger:    logger,
+		repo:        repo,
+		licenseRepo: licenseRepo,
+		auditRepo:   audit,
+		logger:      logger,
 	}
 }
 
@@ -154,6 +156,17 @@ func (s *ProductService) Update(ctx context.Context, id uuid.UUID, req UpdatePro
 	product, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("ProductService.Update: %w", err)
+	}
+
+	// Blokir perubahan name/slug jika sudah ada license yang menggunakan produk ini
+	if product.Name != req.Name || product.Slug != req.Slug {
+		hasLicense, err := s.licenseRepo.ExistsByProductID(ctx, id)
+		if err != nil {
+			return nil, fmt.Errorf("ProductService.Update: %w", err)
+		}
+		if hasLicense {
+			return nil, fmt.Errorf("ProductService.Update: %w", domain.ErrProductHasLicense)
+		}
 	}
 
 	// Cek slug uniqueness hanya jika slug berubah

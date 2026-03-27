@@ -234,6 +234,10 @@ func (h *ProductHandler) Update(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusConflict, "PRODUCT_SLUG_EXISTS", "Slug sudah digunakan")
 			return
 		}
+		if errors.Is(err, domain.ErrProductHasLicense) {
+			writeError(w, http.StatusConflict, "PRODUCT_HAS_LICENSE", "Name dan slug tidak dapat diubah karena produk sudah memiliki license")
+			return
+		}
 		if errors.Is(err, domain.ErrValidationFailed) {
 			writeError(w, http.StatusBadRequest, "VALIDATION_FAILED", "Data tidak valid")
 			return

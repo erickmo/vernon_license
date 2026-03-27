@@ -97,6 +97,10 @@ func (m *mockLicenseRepository) FindByCompany(ctx context.Context, companyID uui
 	return nil, nil
 }
 
+func (m *mockLicenseRepository) ExistsByProductID(ctx context.Context, productID uuid.UUID) (bool, error) {
+	return false, nil
+}
+
 // MockProductRepository
 type mockProductRepository struct {
 	findByIDFn   func(ctx context.Context, id uuid.UUID) (*domain.Product, error)

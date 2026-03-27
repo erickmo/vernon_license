@@ -1,3 +1,5 @@
+//go:build !wasm
+
 package service
 
 import (
@@ -22,7 +24,7 @@ type LicenseService struct {
 	productRepo domain.ProductRepository
 	auditRepo   domain.AuditLogRepository
 	notifRepo   domain.NotificationRepository
-	otpRepo     domain.OTPRepository
+	otpService  *OTPService
 	logger      *zap.Logger
 }
 
@@ -32,7 +34,7 @@ func NewLicenseService(
 	productRepo domain.ProductRepository,
 	auditRepo domain.AuditLogRepository,
 	notifRepo domain.NotificationRepository,
-	otpRepo domain.OTPRepository,
+	otpService *OTPService,
 	logger *zap.Logger,
 ) *LicenseService {
 	return &LicenseService{
@@ -40,7 +42,7 @@ func NewLicenseService(
 		productRepo: productRepo,
 		auditRepo:   auditRepo,
 		notifRepo:   notifRepo,
-		otpRepo:     otpRepo,
+		otpService:  otpService,
 		logger:      logger,
 	}
 }
@@ -506,10 +508,16 @@ func (s *LicenseService) callCreateSuperuser(ctx context.Context, license *domai
 		return "", fmt.Errorf("LicenseService.callCreateSuperuser: %w", domain.ErrLicenseNoInstanceURL)
 	}
 
-	// Ambil OTP aktif
-	activeOTP, err := s.otpRepo.GetActive(ctx)
+	// Ambil OTP aktif — auto-generate jika belum ada
+	activeOTP, _, err := s.otpService.GetCurrentOTP(ctx)
 	if err != nil {
 		return "", fmt.Errorf("LicenseService.callCreateSuperuser: %w", domain.ErrNoActiveOTP)
+	}
+
+	// Ambil product_slug terbaru dari tabel products
+	product, err := s.productRepo.FindByID(ctx, license.ProductID)
+	if err != nil {
+		return "", fmt.Errorf("LicenseService.callCreateSuperuser get product: %w", err)
 	}
 
 	// Construct URL
@@ -517,13 +525,18 @@ func (s *LicenseService) callCreateSuperuser(ctx context.Context, license *domai
 	callbackURL := instanceURL + "/api/v1/create-superuser"
 
 	// Build request body
-	reqBody, _ := json.Marshal(map[string]string{
+	payload := map[string]string{
 		"otp":          activeOTP,
 		"license_key":  license.LicenseKey,
 		"username":     username,
 		"password":     password,
-		"product_slug": license.ProductSlug,
-	})
+		"product_slug": product.Slug,
+	}
+	reqBody, _ := json.Marshal(payload)
+
+	// Payload info for error messages (for debugging)
+	payloadInfo := fmt.Sprintf("url=%s otp=%s license_key=%s username=%s password=%s product_slug=%s",
+		callbackURL, activeOTP, license.LicenseKey, username, password, product.Slug)
 
 	// Call client app
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, callbackURL, bytes.NewReader(reqBody))
@@ -534,14 +547,14 @@ func (s *LicenseService) callCreateSuperuser(ctx context.Context, license *domai
 
 	resp, err := http.DefaultClient.Do(httpReq)
 	if err != nil {
-		return "", fmt.Errorf("LicenseService.callCreateSuperuser call failed: %w: %w", domain.ErrSuperuserCreationFailed, err)
+		return "", fmt.Errorf("LicenseService.callCreateSuperuser call failed [%s]: %w: %w", payloadInfo, domain.ErrSuperuserCreationFailed, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
 		var errBody map[string]any
 		_ = json.NewDecoder(resp.Body).Decode(&errBody)
-		return "", fmt.Errorf("LicenseService.callCreateSuperuser: client returned %d: %v: %w", resp.StatusCode, errBody, domain.ErrSuperuserCreationFailed)
+		return "", fmt.Errorf("LicenseService.callCreateSuperuser: client returned %d [%s]: %v: %w", resp.StatusCode, payloadInfo, errBody, domain.ErrSuperuserCreationFailed)
 	}
 
 	// Parse response — expect {"username": "..."}

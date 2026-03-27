@@ -84,3 +84,6 @@ var ErrNoActiveOTP = errors.New("NO_ACTIVE_OTP")
 
 // ErrLicenseNoInstanceURL dikembalikan ketika license tidak memiliki instance_url untuk callback.
 var ErrLicenseNoInstanceURL = errors.New("LICENSE_NO_INSTANCE_URL")
+
+// ErrProductHasLicense dikembalikan ketika name/slug produk tidak boleh diubah karena sudah ada license.
+var ErrProductHasLicense = errors.New("PRODUCT_HAS_LICENSE")

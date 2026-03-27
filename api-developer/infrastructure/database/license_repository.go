@@ -395,6 +395,16 @@ func (r *LicenseRepo) UpdateSuperuser(ctx context.Context, id uuid.UUID, usernam
 	return nil
 }
 
+// ExistsByProductID mengembalikan true jika ada minimal satu license untuk product tersebut.
+func (r *LicenseRepo) ExistsByProductID(ctx context.Context, productID uuid.UUID) (bool, error) {
+	const q = `SELECT EXISTS(SELECT 1 FROM client_licenses WHERE product_id = $1 AND deleted_at IS NULL)`
+	var exists bool
+	if err := r.db.QueryRowContext(ctx, q, productID).Scan(&exists); err != nil {
+		return false, fmt.Errorf("LicenseRepo.ExistsByProductID: %w", err)
+	}
+	return exists, nil
+}
+
 func licenseRowsToDomain(rows []licenseRow) []*domain.ClientLicense {
 	result := make([]*domain.ClientLicense, len(rows))
 	for i, row := range rows {
