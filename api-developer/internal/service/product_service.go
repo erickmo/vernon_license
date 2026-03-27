@@ -216,6 +216,14 @@ func (s *ProductService) Update(ctx context.Context, id uuid.UUID, req UpdatePro
 // Delete melakukan soft-delete pada product. Hanya untuk superuser — caller wajib memvalidasi role terlebih dahulu.
 // Audit log dibuat dengan action "product_deleted" setelah operasi berhasil.
 func (s *ProductService) Delete(ctx context.Context, id uuid.UUID, actorID uuid.UUID, actorName string) error {
+	hasLicense, err := s.licenseRepo.ExistsByProductID(ctx, id)
+	if err != nil {
+		return fmt.Errorf("ProductService.Delete: %w", err)
+	}
+	if hasLicense {
+		return fmt.Errorf("ProductService.Delete: %w", domain.ErrProductHasLicense)
+	}
+
 	if err := s.repo.Delete(ctx, id); err != nil {
 		return fmt.Errorf("ProductService.Delete: %w", err)
 	}

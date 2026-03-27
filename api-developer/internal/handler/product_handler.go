@@ -281,6 +281,10 @@ func (h *ProductHandler) Delete(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusNotFound, "PRODUCT_NOT_FOUND", "Product tidak ditemukan")
 			return
 		}
+		if errors.Is(err, domain.ErrProductHasLicense) {
+			writeError(w, http.StatusConflict, "PRODUCT_HAS_LICENSE", "Product tidak dapat dihapus karena sudah memiliki license")
+			return
+		}
 		h.logger.Error("ProductHandler.Delete", zap.Error(err))
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Internal server error")
 		return
