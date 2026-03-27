@@ -814,7 +814,8 @@ func (p *DashboardPage) renderAPIInfo() app.UI {
 				Style("gap", "10px").
 				Body(
 					renderAPIEndpoint("POST", base+"/api/v1/register", "Client app mendaftarkan diri → mendapatkan license key", "/docs/PUBLIC_API.md#register"),
-					renderAPIEndpoint("GET", base+"/api/v1/validate", "Client app memvalidasi lisensi → returns { valid: true/false }", "/docs/PUBLIC_API.md#validate"),
+					renderAPIEndpoint("GET", base+"/api/v1/validate?key=FL-XXXXXXXX", "Client app memvalidasi lisensi → returns { valid: true/false }", "/docs/PUBLIC_API.md#validate"),
+					renderAPIEndpoint("POST", base+"/api/v1/validate_otp", "Client app memvalidasi OTP dari license app → returns { status: true/false }", "/docs/PUBLIC_API.md#validate_otp"),
 				),
 			app.Div().
 				Style("margin-top", "12px").
@@ -823,7 +824,7 @@ func (p *DashboardPage) renderAPIInfo() app.UI {
 				Style("border-radius", "6px").
 				Style("color", "#9B8DB5").
 				Style("font-size", "12px").
-				Text("Rate limit: 60 req/min per IP · Header: X-Provision-Key (register) · X-License-Key (validate)"),
+				Text("Rate limit: 60 req/min per IP · No authentication required"),
 		)
 }
 
