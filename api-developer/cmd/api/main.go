@@ -317,6 +317,12 @@ func startServer(lc fx.Lifecycle, r *chi.Mux, cfg *config.Config, log *zap.Logge
 func startScheduler(lc fx.Lifecycle, otpService *service.OTPService, log *zap.Logger) {
 	sched := scheduler.New(log)
 
+	// Rotate OTP setiap 25 menit (OTP berlaku 30 menit — overlap 5 menit untuk safety).
+	sched.Schedule("rotate-otp", 25*time.Minute, func(ctx context.Context) error {
+		_, err := otpService.GenerateOTP(ctx)
+		return err
+	})
+
 	// Cleanup expired OTP records setiap jam
 	sched.Schedule("cleanup-expired-otp", 1*time.Hour, func(ctx context.Context) error {
 		return otpService.CleanupExpired(ctx)
@@ -326,6 +332,14 @@ func startScheduler(lc fx.Lifecycle, otpService *service.OTPService, log *zap.Lo
 		OnStart: func(ctx context.Context) error {
 			go sched.Start(ctx)
 			log.Info("Background scheduler started")
+
+			// Generate OTP langsung saat server start agar selalu tersedia.
+			go func() {
+				if _, err := otpService.GenerateOTP(context.Background()); err != nil {
+					log.Warn("startScheduler: failed to generate initial OTP", zap.Error(err))
+				}
+			}()
+
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {

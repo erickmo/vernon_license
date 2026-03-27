@@ -1,3 +1,5 @@
+//go:build !wasm
+
 package service
 
 import "go.uber.org/fx"
