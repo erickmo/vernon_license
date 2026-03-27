@@ -3,9 +3,6 @@
 package pages
 
 import (
-	"encoding/json"
-	"fmt"
-
 	"github.com/flashlab/vernon-license/internal/ui/api"
 	"github.com/flashlab/vernon-license/internal/ui/store"
 	"github.com/maxence-charriere/go-app/v10/pkg/app"
@@ -224,9 +221,6 @@ func (p *SetupPage) onSubmit(ctx app.Context, e app.Event) {
 				Role string `json:"role"`
 			} `json:"user"`
 		}
-
-		bodyBytes, _ := json.Marshal(body)
-		fmt.Println("DEBUG setup install", string(bodyBytes))
 
 		err := client.Post(ctx, "/api/internal/setup/install", body, &resp)
 		ctx.Dispatch(func(ctx app.Context) {
