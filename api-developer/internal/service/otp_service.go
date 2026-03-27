@@ -30,7 +30,7 @@ func NewOTPService(db *sqlx.DB, log *zap.Logger) *OTPService {
 }
 
 // GenerateOTP menghasilkan OTP baru (16 karakter hex).
-// OTP berlaku selama 5 menit dan dapat digunakan berkali-kali dalam periode tersebut.
+// OTP berlaku selama 30 menit dan dapat digunakan berkali-kali dalam periode tersebut.
 func (s *OTPService) GenerateOTP(ctx context.Context) (string, error) {
 	b := make([]byte, 8)
 	if _, err := rand.Read(b); err != nil {
