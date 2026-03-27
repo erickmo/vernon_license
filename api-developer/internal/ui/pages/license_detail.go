@@ -60,12 +60,13 @@ type LicenseDetailPage struct {
 	showStatusDropdown bool
 
 	// Credential dialog — shared untuk activate, reset-superuser
-	showCredDialog   bool
-	credAction       string // "activate" | "reset-superuser"
-	credUsername     string
-	credPassword     string
-	credShowPassword bool
-	credLoading      bool
+	showCredDialog    bool
+	credAction        string // "activate" | "reset-superuser"
+	credUsername      string
+	credPassword      string
+	credShowPassword  bool
+	credLoading       bool
+	credPasswordError string // real-time password validation feedback
 
 	// Set status confirm dialog (superuser, untuk status non-credential)
 	showSetStatusConfirm bool
@@ -160,6 +161,7 @@ func (p *LicenseDetailPage) onActivate(ctx app.Context, e app.Event) {
 	p.credUsername = ""
 	p.credPassword = ""
 	p.credShowPassword = false
+	p.credPasswordError = ""
 	p.credAction = "activate"
 	p.showCredDialog = true
 }
@@ -169,6 +171,7 @@ func (p *LicenseDetailPage) onResetSuperuser(ctx app.Context, e app.Event) {
 	p.credUsername = ""
 	p.credPassword = ""
 	p.credShowPassword = false
+	p.credPasswordError = ""
 	p.credAction = "reset-superuser"
 	p.showCredDialog = true
 }
@@ -183,9 +186,47 @@ func (p *LicenseDetailPage) onCredUsernameInput(ctx app.Context, e app.Event) {
 	p.credUsername = ctx.JSSrc().Get("value").String()
 }
 
+// credPasswordValidate validates superuser password strength on the client side.
+// Returns an empty string if valid, or a user-facing error message.
+func credPasswordValidate(password string) string {
+	if len(password) == 0 {
+		return ""
+	}
+	if len(password) < 8 {
+		return "Minimal 8 karakter"
+	}
+	var hasUpper, hasLower, hasDigit, hasSpecial bool
+	for _, c := range password {
+		switch {
+		case c >= 'A' && c <= 'Z':
+			hasUpper = true
+		case c >= 'a' && c <= 'z':
+			hasLower = true
+		case c >= '0' && c <= '9':
+			hasDigit = true
+		default:
+			hasSpecial = true
+		}
+	}
+	if !hasUpper {
+		return "Harus mengandung huruf kapital (A-Z)"
+	}
+	if !hasLower {
+		return "Harus mengandung huruf kecil (a-z)"
+	}
+	if !hasDigit {
+		return "Harus mengandung angka (0-9)"
+	}
+	if !hasSpecial {
+		return "Harus mengandung karakter spesial (!@#$...)"
+	}
+	return ""
+}
+
 // onCredPasswordInput menangani input password di credential dialog.
 func (p *LicenseDetailPage) onCredPasswordInput(ctx app.Context, e app.Event) {
 	p.credPassword = ctx.JSSrc().Get("value").String()
+	p.credPasswordError = credPasswordValidate(p.credPassword)
 }
 
 // onCredTogglePassword toggle show/hide password di credential dialog.
@@ -197,6 +238,10 @@ func (p *LicenseDetailPage) onCredTogglePassword(ctx app.Context, e app.Event) {
 func (p *LicenseDetailPage) onCredConfirm(ctx app.Context, e app.Event) {
 	if p.credUsername == "" || p.credPassword == "" {
 		p.errMsg = "Username dan password wajib diisi"
+		return
+	}
+	if errMsg := credPasswordValidate(p.credPassword); errMsg != "" {
+		p.credPasswordError = errMsg
 		return
 	}
 	p.credLoading = true
@@ -1167,6 +1212,20 @@ func (p *LicenseDetailPage) renderCredDialog() app.UI {
 								Style("margin-bottom", "6px").
 								Text("Password"),
 							renderPasswordInput("superuser password", p.credShowPassword, p.onCredPasswordInput, p.onCredTogglePassword),
+							app.P().
+								Style("color", "#6B5E85").
+								Style("font-size", "11px").
+								Style("margin", "6px 0 0").
+								Text("Min 8 karakter · Huruf besar & kecil · Angka · Karakter spesial"),
+							app.If(p.credPasswordError != "",
+								func() app.UI {
+									return app.P().
+										Style("color", "#EF4444").
+										Style("font-size", "12px").
+										Style("margin", "4px 0 0").
+										Text(p.credPasswordError)
+								},
+							),
 						),
 					app.Div().
 						Style("display", "flex").

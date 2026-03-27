@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net/http"
 	"time"
+	"unicode"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -392,6 +393,10 @@ func (h *LicenseHandler) Activate(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewDecoder(r.Body).Decode(&req)
 
 	if req.Username != "" && req.Password != "" {
+		if errMsg := validateSuperuserPassword(req.Password); errMsg != "" {
+			writeError(w, http.StatusBadRequest, "VALIDATION_FAILED", errMsg)
+			return
+		}
 		// Activate with superuser creation
 		if err := h.licenseSvc.ActivateWithSuperuser(r.Context(), id, req.Username, req.Password, actorID, claims.Name); err != nil {
 			h.handleLicenseError(w, "LicenseHandler.Activate", err)
@@ -440,6 +445,11 @@ func (h *LicenseHandler) ResetSuperuser(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	if errMsg := validateSuperuserPassword(req.Password); errMsg != "" {
+		writeError(w, http.StatusBadRequest, "VALIDATION_FAILED", errMsg)
+		return
+	}
+
 	if err := h.licenseSvc.ResetSuperuser(r.Context(), id, req.Username, req.Password, actorID, claims.Name); err != nil {
 		h.handleLicenseError(w, "LicenseHandler.ResetSuperuser", err)
 		return
@@ -448,6 +458,41 @@ func (h *LicenseHandler) ResetSuperuser(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusOK, map[string]string{"result": "ok", "username": req.Username})
 }
 
+
+// validateSuperuserPassword checks password strength for superuser creation/reset.
+// Rules: min 8 chars, at least one uppercase, lowercase, digit, and special character.
+// Returns an empty string if valid, or a descriptive error message.
+func validateSuperuserPassword(password string) string {
+	if len(password) < 8 {
+		return "password minimal 8 karakter"
+	}
+	var hasUpper, hasLower, hasDigit, hasSpecial bool
+	for _, c := range password {
+		switch {
+		case unicode.IsUpper(c):
+			hasUpper = true
+		case unicode.IsLower(c):
+			hasLower = true
+		case unicode.IsDigit(c):
+			hasDigit = true
+		case unicode.IsPunct(c) || unicode.IsSymbol(c):
+			hasSpecial = true
+		}
+	}
+	if !hasUpper {
+		return "password harus mengandung huruf kapital (A-Z)"
+	}
+	if !hasLower {
+		return "password harus mengandung huruf kecil (a-z)"
+	}
+	if !hasDigit {
+		return "password harus mengandung angka (0-9)"
+	}
+	if !hasSpecial {
+		return "password harus mengandung karakter spesial (!@#$...)"
+	}
+	return ""
+}
 
 // handleLicenseError adalah helper untuk menangani error dari LicenseService.
 func (h *LicenseHandler) handleLicenseError(w http.ResponseWriter, caller string, err error) {
